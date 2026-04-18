@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'FinanceHub Frontend',
-    'version': '17.0.1.0.0',
+    'version': '18.0.1.0.0',
     'category': 'Accounting/Accounting',
     'summary': 'Modern OWL-based finance reporting, custom report builder and bank reconciliation UI',
     'description': """
@@ -56,8 +56,8 @@ A fully-featured Odoo addon delivering a modern OWL-based finance UI:
             'financehub_frontend/static/src/js/actions/saved_reports_action.js',
             'financehub_frontend/static/src/js/actions/report_builder_action.js',
             'financehub_frontend/static/src/js/actions/reconciliation_action.js',
-            # Standard standalone reports
-            'financehub_frontend/static/src/js/actions/trial_balance_action.js',
+            # Standard standalone reports (add files to server before re-enabling)
+            # 'financehub_frontend/static/src/js/actions/trial_balance_action.js',
             # QWeb templates
             'financehub_frontend/static/src/xml/components.xml',
             'financehub_frontend/static/src/xml/dashboard.xml',
@@ -65,7 +65,7 @@ A fully-featured Odoo addon delivering a modern OWL-based finance UI:
             'financehub_frontend/static/src/xml/saved_reports.xml',
             'financehub_frontend/static/src/xml/report_builder.xml',
             'financehub_frontend/static/src/xml/reconciliation.xml',
-            'financehub_frontend/static/src/xml/trial_balance.xml',
+            # 'financehub_frontend/static/src/xml/trial_balance.xml',
         ],
     },
     'installable': True,
