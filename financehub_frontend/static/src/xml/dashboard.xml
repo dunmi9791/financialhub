@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="financehub.Dashboard">
+        <div class="fh-page fh-page--dashboard">
+
+            <!-- Header -->
+            <div class="fh-page-header">
+                <div class="fh-page-header__left">
+                    <h1 class="fh-page-title">
+                        <i class="fa fa-tachometer"/> FinanceHub Dashboard
+                    </h1>
+                    <t t-if="state.kpis">
+                        <span class="fh-page-subtitle">
+                            As of <strong t-esc="state.kpis.as_of"/> ·
+                            Period: <strong t-esc="state.kpis.period_label"/>
+                        </span>
+                    </t>
+                </div>
+                <div class="fh-page-header__right">
+                    <button class="fh-btn fh-btn--ghost fh-btn--sm" t-on-click="refresh">
+                        <i class="fa fa-refresh"/> Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading state -->
+            <t t-if="state.loading">
+                <div class="fh-state-loading fh-state-loading--page">
+                    <i class="fa fa-spinner fa-spin fa-3x"/>
+                    <p>Loading KPIs…</p>
+                </div>
+            </t>
+
+            <!-- Error state -->
+            <t t-elif="state.error">
+                <div class="fh-state-error fh-state-error--page">
+                    <i class="fa fa-exclamation-triangle fa-2x"/>
+                    <p t-esc="state.error"/>
+                </div>
+            </t>
+
+            <!-- KPI cards -->
+            <t t-elif="state.kpis">
+                <div class="fh-kpi-grid">
+
+                    <!-- Cash Position -->
+                    <div t-att-class="'fh-kpi-card ' + kpiClass(state.kpis.cash_position)">
+                        <div class="fh-kpi-card__icon">
+                            <i class="fa fa-money fa-2x"/>
+                        </div>
+                        <div class="fh-kpi-card__body">
+                            <div class="fh-kpi-card__label">Cash Position</div>
+                            <div class="fh-kpi-card__value">
+                                <t t-esc="formatAmount(state.kpis.cash_position)"/>
+                            </div>
+                            <div class="fh-kpi-card__sub">
+                                <t t-esc="state.kpis.currency"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Accounts Receivable -->
+                    <div t-att-class="'fh-kpi-card ' + kpiClass(state.kpis.ar_total)">
+                        <div class="fh-kpi-card__icon">
+                            <i class="fa fa-arrow-circle-down fa-2x"/>
+                        </div>
+                        <div class="fh-kpi-card__body">
+                            <div class="fh-kpi-card__label">Accounts Receivable</div>
+                            <div class="fh-kpi-card__value">
+                                <t t-esc="formatAmount(state.kpis.ar_total)"/>
+                            </div>
+                            <div class="fh-kpi-card__sub">Outstanding invoices</div>
+                        </div>
+                    </div>
+
+                    <!-- Accounts Payable -->
+                    <div t-att-class="'fh-kpi-card ' + kpiClass(-state.kpis.ap_total)">
+                        <div class="fh-kpi-card__icon">
+                            <i class="fa fa-arrow-circle-up fa-2x"/>
+                        </div>
+                        <div class="fh-kpi-card__body">
+                            <div class="fh-kpi-card__label">Accounts Payable</div>
+                            <div class="fh-kpi-card__value">
+                                <t t-esc="formatAmount(state.kpis.ap_total)"/>
+                            </div>
+                            <div class="fh-kpi-card__sub">Outstanding bills</div>
+                        </div>
+                    </div>
+
+                    <!-- Net Profit MTD -->
+                    <div t-att-class="'fh-kpi-card ' + kpiClass(state.kpis.net_profit_mtd)">
+                        <div class="fh-kpi-card__icon">
+                            <i class="fa fa-line-chart fa-2x"/>
+                        </div>
+                        <div class="fh-kpi-card__body">
+                            <div class="fh-kpi-card__label">Net Profit MTD</div>
+                            <div class="fh-kpi-card__value">
+                                <t t-esc="formatAmount(state.kpis.net_profit_mtd)"/>
+                            </div>
+                            <div class="fh-kpi-card__sub">
+                                <t t-esc="state.kpis.period_label"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Unreconciled Lines -->
+                    <div t-att-class="'fh-kpi-card ' + (state.kpis.unrecon_count > 0 ? 'fh-kpi--warning' : '')">
+                        <div class="fh-kpi-card__icon">
+                            <i class="fa fa-exclamation-circle fa-2x"/>
+                        </div>
+                        <div class="fh-kpi-card__body">
+                            <div class="fh-kpi-card__label">Unreconciled Lines</div>
+                            <div class="fh-kpi-card__value" t-esc="state.kpis.unrecon_count"/>
+                            <div class="fh-kpi-card__sub">Bank statement lines</div>
+                        </div>
+                        <t t-if="state.kpis.unrecon_count > 0">
+                            <button class="fh-kpi-card__action fh-btn fh-btn--sm fh-btn--warning"
+                                    t-on-click="openReconciliation">
+                                Reconcile now <i class="fa fa-arrow-right"/>
+                            </button>
+                        </t>
+                    </div>
+
+                </div>
+
+                <!-- Quick links -->
+                <div class="fh-dashboard-shortcuts">
+                    <h2 class="fh-section-title">Quick Access</h2>
+                    <div class="fh-shortcut-grid">
+                        <button class="fh-shortcut-btn" t-on-click="openReports">
+                            <i class="fa fa-bar-chart fa-2x"/>
+                            <span>Financial Reports</span>
+                        </button>
+                        <button class="fh-shortcut-btn" t-on-click="openReconciliation">
+                            <i class="fa fa-bank fa-2x"/>
+                            <span>Bank Reconciliation</span>
+                        </button>
+                    </div>
+                </div>
+            </t>
+
+        </div>
+    </t>
+
+</templates>

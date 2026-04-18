@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             Client Actions – each one maps to an OWL page registered in
+             the "actions" registry category under the same tag name.
+             ═══════════════════════════════════════════════════════════════ -->
+
+        <record id="action_financehub_dashboard" model="ir.actions.client">
+            <field name="name">FinanceHub Dashboard</field>
+            <field name="tag">financehub_dashboard</field>
+            <field name="target">main</field>
+        </record>
+
+        <record id="action_financehub_reports" model="ir.actions.client">
+            <field name="name">Financial Reports</field>
+            <field name="tag">financehub_reports</field>
+            <field name="target">main</field>
+        </record>
+
+        <record id="action_financehub_saved_reports" model="ir.actions.client">
+            <field name="name">Saved Reports</field>
+            <field name="tag">financehub_saved_reports</field>
+            <field name="target">main</field>
+        </record>
+
+        <record id="action_financehub_report_builder" model="ir.actions.client">
+            <field name="name">Custom Report Builder</field>
+            <field name="tag">financehub_report_builder</field>
+            <field name="target">main</field>
+        </record>
+
+        <record id="action_financehub_reconciliation" model="ir.actions.client">
+            <field name="name">Bank Reconciliation</field>
+            <field name="tag">financehub_reconciliation</field>
+            <field name="target">main</field>
+        </record>
+
+        <!-- ── Standard Financial Reports (Community-Edition, standalone) ── -->
+
+        <record id="action_financehub_trial_balance" model="ir.actions.client">
+            <field name="name">Trial Balance</field>
+            <field name="tag">financehub_trial_balance</field>
+            <field name="target">main</field>
+        </record>
+
+
+</odoo>

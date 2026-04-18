@@ -1,0 +1,371 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         FilterBar
+         ═══════════════════════════════════════════════════════════════════ -->
+    <t t-name="financehub.FilterBar">
+        <div class="fh-filter-bar">
+            <!-- Date presets -->
+            <div class="fh-filter-group">
+                <label class="fh-filter-label">Period</label>
+                <select class="fh-select" t-att-value="props.filters.date_preset"
+                        t-on-change="onPresetChange">
+                    <t t-foreach="datePresets" t-as="preset" t-key="preset.id">
+                        <option t-att-value="preset.id" t-att-selected="props.filters.date_preset === preset.id">
+                            <t t-esc="preset.label"/>
+                        </option>
+                    </t>
+                </select>
+            </div>
+
+            <!-- Custom date range (shown when preset = 'custom') -->
+            <t t-if="props.filters.date_preset === 'custom' || props.filters.date_from">
+                <div class="fh-filter-group fh-filter-group--date">
+                    <label class="fh-filter-label">From</label>
+                    <input type="date" class="fh-input fh-input--date"
+                           t-att-value="props.filters.date_from"
+                           t-on-change="onDateFromChange"/>
+                </div>
+                <div class="fh-filter-group fh-filter-group--date">
+                    <label class="fh-filter-label">To</label>
+                    <input type="date" class="fh-input fh-input--date"
+                           t-att-value="props.filters.date_to"
+                           t-on-change="onDateToChange"/>
+                </div>
+            </t>
+
+            <!-- Journals dropdown -->
+            <t t-if="state.journals.length">
+                <div class="fh-filter-group fh-filter-group--dropdown">
+                    <label class="fh-filter-label">Journals</label>
+                    <div class="fh-multi-select-trigger" t-on-click="toggleAdvanced">
+                        <t t-if="(props.filters.journal_ids || []).length">
+                            <span class="fh-badge"><t t-esc="(props.filters.journal_ids || []).length"/> selected</span>
+                        </t>
+                        <t t-else="">All journals</t>
+                        <i class="fa fa-chevron-down fh-ml-1"/>
+                    </div>
+                    <t t-if="state.showAdvanced">
+                        <div class="fh-dropdown-panel">
+                            <t t-foreach="state.journals" t-as="j" t-key="j.id">
+                                <label class="fh-dropdown-item">
+                                    <input type="checkbox"
+                                           t-att-checked="isJournalSelected(j.id)"
+                                           t-on-change="() => this.onJournalToggle(j.id)"/>
+                                    <span t-esc="j.name"/>
+                                </label>
+                            </t>
+                        </div>
+                    </t>
+                </div>
+            </t>
+
+            <!-- Analytic -->
+            <t t-if="supportsAnalytic and state.analytics.length">
+                <div class="fh-filter-group">
+                    <label class="fh-filter-label">Analytic</label>
+                    <select class="fh-select" t-on-change="(ev) => this.onAnalyticToggle(parseInt(ev.target.value))">
+                        <option value="">All</option>
+                        <t t-foreach="state.analytics" t-as="a" t-key="a.id">
+                            <option t-att-value="a.id" t-att-selected="isAnalyticSelected(a.id)">
+                                <t t-esc="a.name"/>
+                            </option>
+                        </t>
+                    </select>
+                </div>
+            </t>
+
+            <!-- Compare mode -->
+            <t t-if="supportsCompare">
+                <div class="fh-filter-group">
+                    <label class="fh-filter-label">Compare</label>
+                    <select class="fh-select" t-att-value="props.filters.compare_mode || ''"
+                            t-on-change="onCompareModeChange">
+                        <t t-foreach="compareModes" t-as="cm" t-key="String(cm.id)">
+                            <option t-att-value="cm.id || ''" t-att-selected="props.filters.compare_mode === cm.id">
+                                <t t-esc="cm.label"/>
+                            </option>
+                        </t>
+                    </select>
+                </div>
+            </t>
+
+            <!-- Active filter badge + clear -->
+            <t t-if="activeFilterCount() > 0">
+                <button class="fh-btn fh-btn--ghost fh-btn--sm" t-on-click="onClearAllFilters">
+                    <i class="fa fa-times-circle"/> Clear all
+                </button>
+            </t>
+        </div>
+    </t>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         ReportTable
+         ═══════════════════════════════════════════════════════════════════ -->
+    <t t-name="financehub.ReportTable">
+        <div class="fh-report-table-wrap">
+            <!-- Loading -->
+            <t t-if="props.loading">
+                <div class="fh-state-loading">
+                    <i class="fa fa-spinner fa-spin fa-2x"/>
+                    <span>Loading report…</span>
+                </div>
+            </t>
+
+            <!-- Error -->
+            <t t-elif="props.error">
+                <div class="fh-state-error">
+                    <i class="fa fa-exclamation-triangle"/>
+                    <span t-esc="props.error"/>
+                </div>
+            </t>
+
+            <!-- Empty -->
+            <t t-elif="!props.reportData or !props.reportData.rows or props.reportData.rows.length === 0">
+                <div class="fh-state-empty">
+                    <i class="fa fa-table fa-2x"/>
+                    <p>No data for the selected filters.</p>
+                </div>
+            </t>
+
+            <!-- Table -->
+            <t t-else="">
+                <!-- Table actions -->
+                <div class="fh-table-toolbar">
+                    <button class="fh-btn fh-btn--ghost fh-btn--sm" t-on-click="expandAll">
+                        <i class="fa fa-expand"/> Expand all
+                    </button>
+                    <button class="fh-btn fh-btn--ghost fh-btn--sm" t-on-click="collapseAll">
+                        <i class="fa fa-compress"/> Collapse all
+                    </button>
+                </div>
+
+                <table class="fh-table">
+                    <thead>
+                        <tr>
+                            <t t-foreach="columns" t-as="col" t-key="col.field">
+                                <th t-att-class="'fh-th fh-th--' + colAlign(col)"
+                                    t-esc="col.label"/>
+                            </t>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="flatRows" t-as="item" t-key="item.row.row_key">
+                            <tr t-att-class="rowClass(item.row, item.depth)"
+                                t-on-click="() => this.onRowClick(item.row)">
+
+                                <t t-foreach="columns" t-as="col" t-key="col.field">
+                                    <td t-att-class="'fh-td fh-td--' + colAlign(col) + ' ' + cellClass(item.row, col)">
+
+                                        <!-- First column: indent + toggle icon -->
+                                        <t t-if="col_index === 0">
+                                            <span t-att-style="'padding-left:' + (item.depth * 16) + 'px'">
+                                                <t t-if="item.row.children and item.row.children.length">
+                                                    <i t-att-class="'fh-toggle fa ' + (isCollapsed(item.row.row_key) ? 'fa-chevron-right' : 'fa-chevron-down')"
+                                                       t-on-click.stop="() => this.toggleCollapse(item.row.row_key)"/>
+                                                </t>
+                                                <t t-else="">
+                                                    <span class="fh-toggle-placeholder"/>
+                                                </t>
+                                                <span t-esc="item.row.label"/>
+                                            </span>
+                                        </t>
+                                        <t t-else="">
+                                            <t t-esc="cellValue(item.row, col)"/>
+                                        </t>
+
+                                    </td>
+                                </t>
+
+                            </tr>
+                        </t>
+                    </tbody>
+
+                    <!-- Totals row -->
+                    <t t-if="totals">
+                        <tfoot>
+                            <tr class="fh-row--totals">
+                                <t t-foreach="columns" t-as="col" t-key="col.field">
+                                    <td t-att-class="'fh-td fh-td--' + colAlign(col)">
+                                        <t t-if="col_index === 0">
+                                            <strong t-esc="totals.label || 'Total'"/>
+                                        </t>
+                                        <t t-else="">
+                                            <strong t-esc="totalValue(col)"/>
+                                        </t>
+                                    </td>
+                                </t>
+                            </tr>
+                        </tfoot>
+                    </t>
+                </table>
+            </t>
+        </div>
+    </t>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         DrilldownDrawer
+         ═══════════════════════════════════════════════════════════════════ -->
+    <t t-name="financehub.DrilldownDrawer">
+        <t t-if="props.open">
+            <div class="fh-drawer-overlay" t-on-click="onClose"/>
+            <div class="fh-drawer">
+                <!-- Header -->
+                <div class="fh-drawer-header">
+                    <h3 class="fh-drawer-title">
+                        <i class="fa fa-list"/> Drill-down:
+                        <span t-esc="props.title"/>
+                    </h3>
+                    <button class="fh-btn fh-btn--ghost fh-btn--icon" t-on-click="onClose">
+                        <i class="fa fa-times"/>
+                    </button>
+                </div>
+
+                <!-- Body -->
+                <div class="fh-drawer-body">
+                    <t t-if="state.loading">
+                        <div class="fh-state-loading">
+                            <i class="fa fa-spinner fa-spin"/>
+                        </div>
+                    </t>
+                    <t t-elif="state.error">
+                        <div class="fh-state-error" t-esc="state.error"/>
+                    </t>
+                    <t t-else="">
+                        <div class="fh-drawer-meta">
+                            Showing <strong t-esc="state.rows.length"/> of <strong t-esc="state.total"/> entries
+                        </div>
+
+                        <table class="fh-table fh-table--sm">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Journal</th>
+                                    <th>Account</th>
+                                    <th>Partner</th>
+                                    <th>Reference</th>
+                                    <th>Label</th>
+                                    <th class="fh-th--right">Debit</th>
+                                    <th class="fh-th--right">Credit</th>
+                                    <th class="fh-th--right">Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="state.rows" t-as="row" t-key="row.id">
+                                    <tr class="fh-drilldown-row"
+                                        t-on-click="() => this.onOpenMove(row.move_id)">
+                                        <td t-esc="row.date"/>
+                                        <td t-esc="row.journal"/>
+                                        <td>
+                                            <span class="fh-account-code" t-esc="row.account_code"/>
+                                            <span t-esc="' ' + row.account_name"/>
+                                        </td>
+                                        <td t-esc="row.partner"/>
+                                        <td t-esc="row.ref"/>
+                                        <td t-esc="row.label"/>
+                                        <td t-att-class="'fh-td--right ' + amountClass(row.debit)" t-esc="formatAmount(row.debit)"/>
+                                        <td t-att-class="'fh-td--right ' + amountClass(row.credit)" t-esc="formatAmount(row.credit)"/>
+                                        <td t-att-class="'fh-td--right ' + amountClass(row.balance)" t-esc="formatAmount(row.balance)"/>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <!-- Pagination -->
+                        <t t-if="state.pages > 1">
+                            <div class="fh-pagination">
+                                <button class="fh-btn fh-btn--sm" t-att-disabled="state.page <= 1"
+                                        t-on-click="() => this.onPageChange(state.page - 1)">
+                                    <i class="fa fa-chevron-left"/>
+                                </button>
+                                <t t-foreach="pageNumbers" t-as="p" t-key="p">
+                                    <button t-att-class="'fh-btn fh-btn--sm ' + (p === state.page ? 'fh-btn--primary' : '')"
+                                            t-on-click="() => this.onPageChange(p)" t-esc="p"/>
+                                </t>
+                                <button class="fh-btn fh-btn--sm" t-att-disabled="state.page >= state.pages"
+                                        t-on-click="() => this.onPageChange(state.page + 1)">
+                                    <i class="fa fa-chevron-right"/>
+                                </button>
+                            </div>
+                        </t>
+                    </t>
+                </div>
+            </div>
+        </t>
+    </t>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         SavedConfigModal
+         ═══════════════════════════════════════════════════════════════════ -->
+    <t t-name="financehub.SavedConfigModal">
+        <t t-if="props.open">
+            <div class="fh-modal-overlay" t-on-click="onCancel"/>
+            <div class="fh-modal">
+                <div class="fh-modal-header">
+                    <h3>Save Report Configuration</h3>
+                    <button class="fh-btn fh-btn--ghost fh-btn--icon" t-on-click="onCancel">
+                        <i class="fa fa-times"/>
+                    </button>
+                </div>
+                <div class="fh-modal-body">
+                    <div class="fh-form-group">
+                        <label>Name *</label>
+                        <input type="text" class="fh-input"
+                               placeholder="e.g. Monthly P&amp;L – No Adjustments"
+                               t-att-value="state.name"
+                               t-on-input="onNameInput"/>
+                    </div>
+                    <div class="fh-form-group">
+                        <label>Description</label>
+                        <textarea class="fh-input fh-input--textarea"
+                                  placeholder="Optional notes…"
+                                  t-att-value="state.description"
+                                  t-on-input="onDescInput"/>
+                    </div>
+                    <div class="fh-form-group">
+                        <label>Sharing</label>
+                        <select class="fh-select" t-att-value="state.sharing"
+                                t-on-change="onSharingChange">
+                            <option value="private">Private (only me)</option>
+                            <option value="shared">Shared (all accountants)</option>
+                        </select>
+                    </div>
+                    <div class="fh-form-group fh-form-group--check">
+                        <label>
+                            <input type="checkbox" t-att-checked="state.is_default"
+                                   t-on-change="onDefaultToggle"/>
+                            Set as default for this report type
+                        </label>
+                    </div>
+                </div>
+                <div class="fh-modal-footer">
+                    <button class="fh-btn fh-btn--ghost" t-on-click="onCancel">Cancel</button>
+                    <button class="fh-btn fh-btn--primary" t-att-disabled="!isValid"
+                            t-on-click="onSave">
+                        <i class="fa fa-save"/> Save
+                    </button>
+                </div>
+            </div>
+        </t>
+    </t>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         ExportButtons
+         ═══════════════════════════════════════════════════════════════════ -->
+    <t t-name="financehub.ExportButtons">
+        <div class="fh-export-buttons">
+            <button class="fh-btn fh-btn--ghost fh-btn--sm"
+                    t-att-disabled="props.disabled"
+                    t-on-click="onPdf">
+                <i class="fa fa-file-pdf-o"/> PDF
+            </button>
+            <button class="fh-btn fh-btn--ghost fh-btn--sm"
+                    t-att-disabled="props.disabled"
+                    t-on-click="onXlsx">
+                <i class="fa fa-file-excel-o"/> XLSX
+            </button>
+        </div>
+    </t>
+
+</templates>

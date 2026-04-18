@@ -1,0 +1,484 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         Reconciliation top-level page
+         ═══════════════════════════════════════════════════════════════════ -->
+    <t t-name="financehub.Reconciliation">
+        <div class="fh-page fh-page--recon">
+            <div class="fh-page-header">
+                <h1 class="fh-page-title">
+                    <i class="fa fa-bank"/> Bank Reconciliation
+                </h1>
+            </div>
+            <ReconciliationWorkbench/>
+        </div>
+    </t>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         ReconciliationWorkbench
+         ═══════════════════════════════════════════════════════════════════ -->
+    <t t-name="financehub.ReconciliationWorkbench">
+        <div class="fh-recon-workspace">
+
+            <!-- Left panel: statement lines -->
+            <div class="fh-recon-left">
+                <StatementLinesList
+                    linesData="state.linesData"
+                    loading="state.loadingLines"
+                    filters="state.filters"
+                    journals="state.journals"
+                    selectedLineId="state.selectedLineId"
+                    batchSelected="state.batchSelected"
+                    statusOptions="statusOptions"
+                    onLineSelect.bind="onLineSelect"
+                    onFilterChange.bind="onFilterChange"
+                    onPageChange.bind="onPageChange"
+                    onToggleBatch.bind="toggleBatchSelect"
+                    onBatchReconcile.bind="onBatchAutoReconcile"
+                    batchLoading="state.batchLoading"
+                />
+            </div>
+
+            <!-- Right panel: match candidates -->
+            <div class="fh-recon-right">
+                <t t-if="state.selectedLine">
+                    <MatchCandidatesPanel
+                        line="state.selectedLine"
+                        auditLog="state.auditLog"
+                        showAuditLog="state.showAuditLog"
+                        onAction.bind="onReconcileAction"
+                        onShowAudit.bind="onShowAuditLog"
+                        onHideAudit.bind="onHideAuditLog"
+                    />
+                </t>
+                <t t-else="">
+                    <div class="fh-recon-empty-state">
+                        <i class="fa fa-arrow-left fa-2x"/>
+                        <p>Select a statement line to begin reconciliation.</p>
+                    </div>
+                </t>
+            </div>
+
+        </div>
+    </t>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         StatementLinesList
+         ═══════════════════════════════════════════════════════════════════ -->
+    <t t-name="financehub.StatementLinesList">
+        <div class="fh-st-list">
+
+            <!-- Filters -->
+            <div class="fh-st-filters">
+                <!-- Search -->
+                <div class="fh-search-box fh-search-box--sm">
+                    <i class="fa fa-search"/>
+                    <input type="text" class="fh-input fh-input--sm"
+                           placeholder="Search…"
+                           t-att-value="props.filters.search"
+                           t-on-input="onSearchInput"/>
+                </div>
+
+                <!-- Status filter -->
+                <select class="fh-select fh-select--sm" t-att-value="props.filters.status"
+                        t-on-change="onStatusChange">
+                    <t t-foreach="props.statusOptions" t-as="s" t-key="s.id">
+                        <option t-att-value="s.id" t-att-selected="props.filters.status === s.id">
+                            <t t-esc="s.label"/>
+                        </option>
+                    </t>
+                </select>
+
+                <!-- Journal filter -->
+                <t t-if="props.journals.length">
+                    <select class="fh-select fh-select--sm" t-on-change="onJournalChange">
+                        <option value="">All journals</option>
+                        <t t-foreach="props.journals" t-as="j" t-key="j.id">
+                            <option t-att-value="j.id"
+                                    t-att-selected="(props.filters.journal_ids || []).includes(j.id)">
+                                <t t-esc="j.name"/>
+                            </option>
+                        </t>
+                    </select>
+                </t>
+
+                <!-- Date range -->
+                <input type="date" class="fh-input fh-input--sm fh-input--date"
+                       t-att-value="props.filters.date_from || ''"
+                       t-on-change="onDateFromChange" title="From date"/>
+                <input type="date" class="fh-input fh-input--sm fh-input--date"
+                       t-att-value="props.filters.date_to || ''"
+                       t-on-change="onDateToChange" title="To date"/>
+            </div>
+
+            <!-- Batch actions -->
+            <t t-if="hasBatchSelected">
+                <div class="fh-batch-bar">
+                    <span><strong t-esc="props.batchSelected.length"/> selected</span>
+                    <button class="fh-btn fh-btn--primary fh-btn--sm"
+                            t-att-disabled="props.batchLoading"
+                            t-on-click="() => this.props.onBatchReconcile()">
+                        <t t-if="props.batchLoading">
+                            <i class="fa fa-spinner fa-spin"/> Auto-reconciling…
+                        </t>
+                        <t t-else="">
+                            <i class="fa fa-bolt"/> Auto-reconcile selected
+                        </t>
+                    </button>
+                </div>
+            </t>
+
+            <!-- Loading -->
+            <t t-if="props.loading">
+                <div class="fh-state-loading"><i class="fa fa-spinner fa-spin fa-2x"/></div>
+            </t>
+
+            <!-- Empty -->
+            <t t-elif="lines.length === 0">
+                <div class="fh-state-empty fh-state-empty--sm">
+                    No statement lines match the current filters.
+                </div>
+            </t>
+
+            <!-- Lines list -->
+            <t t-else="">
+                <div class="fh-st-lines-list">
+                    <t t-foreach="lines" t-as="line" t-key="line.id">
+                        <div t-att-class="lineClass(line)"
+                             t-on-click="(ev) => this.onSelect(line, ev)">
+
+                            <!-- Batch checkbox -->
+                            <div class="fh-st-line__check">
+                                <input type="checkbox"
+                                       t-att-checked="isBatchChecked(line.id)"
+                                       t-on-change="(ev) => this.onCheckbox(line.id, ev)"/>
+                            </div>
+
+                            <div class="fh-st-line__body">
+                                <div class="fh-st-line__top">
+                                    <span class="fh-st-line__ref" t-esc="line.payment_ref || '—'"/>
+                                    <span t-att-class="'fh-st-line__amount ' + amountClass(line.amount)">
+                                        <t t-esc="(line.amount >= 0 ? '+' : '-') + formatAmount(line.amount)"/>
+                                        <span class="fh-currency" t-esc="' ' + line.currency"/>
+                                    </span>
+                                </div>
+                                <div class="fh-st-line__sub">
+                                    <span class="fh-st-line__partner" t-esc="line.partner_name || 'Unknown'"/>
+                                    <span class="fh-st-line__date" t-esc="line.date"/>
+                                    <span class="fh-st-line__journal" t-esc="line.journal"/>
+                                </div>
+                            </div>
+
+                            <div class="fh-st-line__status">
+                                <t t-if="line.is_reconciled">
+                                    <span class="fh-status-badge fh-status-badge--success">
+                                        <i class="fa fa-check"/> Reconciled
+                                    </span>
+                                </t>
+                                <t t-else="">
+                                    <span class="fh-status-badge fh-status-badge--pending">Pending</span>
+                                </t>
+                            </div>
+
+                        </div>
+                    </t>
+                </div>
+
+                <!-- Pagination -->
+                <div class="fh-st-pagination">
+                    <span class="fh-pagination-info">
+                        <t t-esc="(page - 1) * props.linesData.page_size + 1"/> –
+                        <t t-esc="Math.min(page * props.linesData.page_size, total)"/> of
+                        <t t-esc="total"/>
+                    </span>
+                    <div class="fh-pagination">
+                        <button class="fh-btn fh-btn--sm" t-att-disabled="page <= 1"
+                                t-on-click="() => this.props.onPageChange(page - 1)">
+                            <i class="fa fa-chevron-left"/>
+                        </button>
+                        <t t-foreach="pageNumbers" t-as="p" t-key="p">
+                            <button t-att-class="'fh-btn fh-btn--sm ' + (p === page ? 'fh-btn--primary' : '')"
+                                    t-on-click="() => this.props.onPageChange(p)" t-esc="p"/>
+                        </t>
+                        <button class="fh-btn fh-btn--sm" t-att-disabled="page >= pages"
+                                t-on-click="() => this.props.onPageChange(page + 1)">
+                            <i class="fa fa-chevron-right"/>
+                        </button>
+                    </div>
+                </div>
+            </t>
+        </div>
+    </t>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         MatchCandidatesPanel
+         ═══════════════════════════════════════════════════════════════════ -->
+    <t t-name="financehub.MatchCandidatesPanel">
+        <div class="fh-match-panel">
+
+            <!-- Line details header -->
+            <div class="fh-match-panel__header">
+                <div class="fh-match-panel__line-info">
+                    <div class="fh-match-panel__ref" t-esc="props.line.payment_ref || '—'"/>
+                    <div t-att-class="'fh-match-panel__amount ' + (props.line.amount >= 0 ? 'fh-amount--positive' : 'fh-amount--negative')">
+                        <t t-esc="formatAmount(props.line.amount)"/>
+                        <span t-esc="' ' + props.line.currency"/>
+                    </div>
+                    <div class="fh-match-panel__meta">
+                        <span t-esc="props.line.date"/> · <span t-esc="props.line.journal"/>
+                        <t t-if="props.line.partner_name">
+                            · <span t-esc="props.line.partner_name"/>
+                        </t>
+                    </div>
+                </div>
+
+                <!-- Action buttons -->
+                <div class="fh-match-panel__actions">
+                    <button class="fh-btn fh-btn--ghost fh-btn--sm" t-on-click="() => this.props.onShowAudit()">
+                        <i class="fa fa-history"/> Audit log
+                    </button>
+                </div>
+            </div>
+
+            <!-- Audit log panel -->
+            <t t-if="props.showAuditLog">
+                <div class="fh-audit-log">
+                    <div class="fh-audit-log__header">
+                        <strong>Audit Trail</strong>
+                        <button class="fh-btn fh-btn--ghost fh-btn--icon fh-btn--sm"
+                                t-on-click="() => this.props.onHideAudit()">
+                            <i class="fa fa-times"/>
+                        </button>
+                    </div>
+                    <t t-if="(props.auditLog || []).length === 0">
+                        <div class="fh-audit-log__empty">No audit entries yet.</div>
+                    </t>
+                    <t t-foreach="(props.auditLog || [])" t-as="note" t-key="note.id">
+                        <div class="fh-audit-entry">
+                            <div class="fh-audit-entry__action" t-esc="note.action_type"/>
+                            <div class="fh-audit-entry__who">
+                                <t t-esc="note.performed_by ? note.performed_by[1] : ''"/>
+                            </div>
+                            <div class="fh-audit-entry__when" t-esc="String(note.action_date).slice(0,16)"/>
+                            <div class="fh-audit-entry__note" t-esc="note.note || ''"/>
+                        </div>
+                    </t>
+                </div>
+            </t>
+
+            <!-- Idle state: show action buttons -->
+            <t t-if="isIdle">
+                <div class="fh-match-actions-grid">
+                    <button class="fh-match-action-btn" t-on-click="startMatch">
+                        <i class="fa fa-link fa-2x"/>
+                        <span>Match</span>
+                    </button>
+                    <button class="fh-match-action-btn" t-on-click="startWriteoff">
+                        <i class="fa fa-pencil-square fa-2x"/>
+                        <span>Write-off</span>
+                    </button>
+                    <button class="fh-match-action-btn" t-on-click="startSplit">
+                        <i class="fa fa-scissors fa-2x"/>
+                        <span>Split</span>
+                    </button>
+                    <button class="fh-match-action-btn" t-on-click="startCreatePayment">
+                        <i class="fa fa-credit-card fa-2x"/>
+                        <span>Create Payment</span>
+                    </button>
+                    <button class="fh-match-action-btn fh-match-action-btn--review" t-on-click="onMarkReview">
+                        <i class="fa fa-eye fa-2x"/>
+                        <span>Mark Review</span>
+                    </button>
+                </div>
+            </t>
+
+            <!-- Match mode: suggestions + manual search -->
+            <t t-if="isMatchMode">
+                <div class="fh-match-mode">
+                    <div class="fh-match-mode__header">
+                        <strong>Match Suggestions</strong>
+                        <button class="fh-btn fh-btn--ghost fh-btn--sm" t-on-click="cancelAction">
+                            <i class="fa fa-arrow-left"/> Back
+                        </button>
+                    </div>
+
+                    <!-- Loading suggestions -->
+                    <t t-if="state.loadingSuggestions">
+                        <div class="fh-state-loading"><i class="fa fa-spinner fa-spin"/></div>
+                    </t>
+
+                    <!-- Suggestions list -->
+                    <t t-elif="state.suggestions.length">
+                        <div class="fh-suggestions-list">
+                            <t t-foreach="state.suggestions" t-as="s" t-key="s.id + '_' + s.type">
+                                <div class="fh-suggestion" t-on-click="() => this.onSelectSuggestion(s)">
+                                    <div class="fh-suggestion__body">
+                                        <div class="fh-suggestion__label" t-esc="s.label"/>
+                                        <div class="fh-suggestion__meta">
+                                            <t t-esc="s.date"/> · <t t-esc="s.type"/>
+                                        </div>
+                                    </div>
+                                    <div class="fh-suggestion__right">
+                                        <span class="fh-suggestion__amount" t-esc="formatAmount(s.amount)"/>
+                                        <span t-att-class="'fh-score ' + scoreClass(s.score)">
+                                            <t t-esc="s.score"/>%
+                                        </span>
+                                    </div>
+                                </div>
+                            </t>
+                        </div>
+                    </t>
+                    <t t-else="">
+                        <div class="fh-state-empty fh-state-empty--sm">No suggestions found.</div>
+                    </t>
+
+                    <!-- Manual search -->
+                    <div class="fh-manual-search">
+                        <div class="fh-search-box">
+                            <input type="text" class="fh-input" placeholder="Manual search…"
+                                   t-att-value="state.manualSearch"
+                                   t-on-input="onManualSearchInput"/>
+                            <button class="fh-btn fh-btn--primary fh-btn--sm" t-on-click="onManualSearch">
+                                <i class="fa fa-search"/>
+                            </button>
+                        </div>
+                        <t t-if="state.manualResults.length">
+                            <div class="fh-suggestions-list fh-suggestions-list--manual">
+                                <t t-foreach="state.manualResults" t-as="s" t-key="s.id + '_m_' + s.type">
+                                    <div class="fh-suggestion" t-on-click="() => this.onSelectSuggestion(s)">
+                                        <span t-esc="s.label"/>
+                                        <span t-esc="formatAmount(s.amount)"/>
+                                    </div>
+                                </t>
+                            </div>
+                        </t>
+                    </div>
+                </div>
+            </t>
+
+            <!-- Write-off mode -->
+            <t t-if="isWriteoffMode">
+                <div class="fh-action-form">
+                    <div class="fh-action-form__header">
+                        <strong>Write-off</strong>
+                        <button class="fh-btn fh-btn--ghost fh-btn--sm" t-on-click="cancelAction">
+                            <i class="fa fa-arrow-left"/> Back
+                        </button>
+                    </div>
+                    <div class="fh-form-group">
+                        <label>Write-off Account *</label>
+                        <select class="fh-select" t-on-change="onWriteoffAccountChange">
+                            <option value="">— select account —</option>
+                            <t t-foreach="state.accounts" t-as="acc" t-key="acc.id">
+                                <option t-att-value="acc.id">
+                                    <t t-esc="acc.code + ' ' + acc.name"/>
+                                </option>
+                            </t>
+                        </select>
+                    </div>
+                    <div class="fh-form-group">
+                        <label>Amount</label>
+                        <input type="number" class="fh-input" step="0.01"
+                               t-att-value="state.writeoff.amount"
+                               t-on-input="onWriteoffAmountChange"/>
+                    </div>
+                    <div class="fh-form-group">
+                        <label>Label</label>
+                        <input type="text" class="fh-input"
+                               t-att-value="state.writeoff.label"
+                               t-on-input="onWriteoffLabelChange"/>
+                    </div>
+                    <button class="fh-btn fh-btn--primary" t-on-click="onConfirmWriteoff">
+                        <i class="fa fa-check"/> Confirm Write-off
+                    </button>
+                </div>
+            </t>
+
+            <!-- Split mode -->
+            <t t-if="isSplitMode">
+                <div class="fh-action-form">
+                    <div class="fh-action-form__header">
+                        <strong>Split Line</strong>
+                        <button class="fh-btn fh-btn--ghost fh-btn--sm" t-on-click="cancelAction">
+                            <i class="fa fa-arrow-left"/> Back
+                        </button>
+                    </div>
+                    <p class="fh-step-desc">
+                        Total: <strong t-esc="formatAmount(props.line.amount)"/>
+                        · Parts sum: <strong t-att-class="splitValid ? '' : 'fh-text--error'"
+                                             t-esc="formatAmount(splitTotal)"/>
+                    </p>
+                    <t t-foreach="state.splits" t-as="part" t-key="part_index">
+                        <div class="fh-split-row">
+                            <input type="number" class="fh-input fh-input--sm" step="0.01"
+                                   placeholder="Amount"
+                                   t-att-value="part.amount"
+                                   t-on-input="(ev) => this.onSplitAmountChange(part_index, ev)"/>
+                            <input type="text" class="fh-input fh-input--sm"
+                                   placeholder="Label"
+                                   t-att-value="part.label"
+                                   t-on-input="(ev) => this.onSplitLabelChange(part_index, ev)"/>
+                            <t t-if="state.splits.length > 2">
+                                <button class="fh-btn fh-btn--ghost fh-btn--icon fh-btn--sm"
+                                        t-on-click="() => this.removeSplitPart(part_index)">
+                                    <i class="fa fa-times"/>
+                                </button>
+                            </t>
+                        </div>
+                    </t>
+                    <button class="fh-btn fh-btn--ghost fh-btn--sm" t-on-click="addSplitPart">
+                        <i class="fa fa-plus"/> Add part
+                    </button>
+                    <button class="fh-btn fh-btn--primary fh-mt-2" t-att-disabled="!splitValid"
+                            t-on-click="onConfirmSplit">
+                        <i class="fa fa-scissors"/> Confirm Split
+                    </button>
+                </div>
+            </t>
+
+            <!-- Create payment mode -->
+            <t t-if="isCreatePaymentMode">
+                <div class="fh-action-form">
+                    <div class="fh-action-form__header">
+                        <strong>Create Payment</strong>
+                        <button class="fh-btn fh-btn--ghost fh-btn--sm" t-on-click="cancelAction">
+                            <i class="fa fa-arrow-left"/> Back
+                        </button>
+                    </div>
+                    <div class="fh-form-group">
+                        <label>Partner *</label>
+                        <select class="fh-select" t-on-change="onPaymentPartnerChange">
+                            <option value="">— select partner —</option>
+                            <t t-foreach="state.partners" t-as="p" t-key="p.id">
+                                <option t-att-value="p.id"
+                                        t-att-selected="state.payment.partner_id === p.id">
+                                    <t t-esc="p.name"/>
+                                </option>
+                            </t>
+                        </select>
+                    </div>
+                    <div class="fh-form-group">
+                        <label>Memo / Reference</label>
+                        <input type="text" class="fh-input"
+                               t-att-value="state.payment.memo"
+                               t-on-input="onPaymentMemoChange"/>
+                    </div>
+                    <div class="fh-form-group">
+                        <label>Amount</label>
+                        <strong t-esc="formatAmount(Math.abs(props.line.amount))"/>
+                        <span t-esc="' ' + props.line.currency"/>
+                        <span class="fh-ml-2 fh-text--muted">
+                            (<t t-esc="props.line.amount >= 0 ? 'Inbound' : 'Outbound'"/>)
+                        </span>
+                    </div>
+                    <button class="fh-btn fh-btn--primary" t-on-click="onConfirmCreatePayment">
+                        <i class="fa fa-credit-card"/> Create &amp; Reconcile
+                    </button>
+                </div>
+            </t>
+
+        </div>
+    </t>
+
+</templates>

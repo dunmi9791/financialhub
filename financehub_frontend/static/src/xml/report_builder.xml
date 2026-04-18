@@ -1,0 +1,423 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="financehub.ReportBuilder">
+        <div class="fh-page fh-page--builder">
+
+            <div class="fh-page-header">
+                <h1 class="fh-page-title">
+                    <i class="fa fa-magic"/> Custom Report Builder
+                </h1>
+            </div>
+
+            <div class="fh-builder-layout">
+
+                <!-- ── Left: saved definitions list ── -->
+                <div class="fh-builder-sidebar">
+                    <div class="fh-builder-sidebar__header">
+                        <span>My Definitions</span>
+                        <button class="fh-btn fh-btn--primary fh-btn--sm" t-on-click="onNewDefinition">
+                            <i class="fa fa-plus"/> New
+                        </button>
+                    </div>
+
+                    <t t-if="state.loadingDefs">
+                        <div class="fh-state-loading"><i class="fa fa-spinner fa-spin"/></div>
+                    </t>
+                    <t t-elif="state.definitions.length === 0">
+                        <div class="fh-state-empty fh-state-empty--sm">No definitions yet.</div>
+                    </t>
+                    <t t-else="">
+                        <t t-foreach="state.definitions" t-as="def" t-key="def.id">
+                            <div t-att-class="'fh-def-item ' + (state.defId === def.id ? 'fh-def-item--active' : '')">
+                                <div class="fh-def-item__info" t-on-click="() => this.onLoadDefinition(def)">
+                                    <span class="fh-def-item__name" t-esc="def.name"/>
+                                    <span class="fh-def-item__meta">
+                                        <t t-esc="def.base_model"/> · <t t-esc="def.column_count"/> cols
+                                    </span>
+                                </div>
+                                <button class="fh-btn fh-btn--ghost fh-btn--icon fh-btn--sm"
+                                        t-on-click="() => this.onDeleteDefinition(def)"
+                                        title="Delete">
+                                    <i class="fa fa-trash"/>
+                                </button>
+                            </div>
+                        </t>
+                    </t>
+                </div>
+
+                <!-- ── Right: wizard steps ── -->
+                <div class="fh-builder-main">
+
+                    <!-- Step indicator -->
+                    <div class="fh-step-bar">
+                        <t t-foreach="state.steps" t-as="step" t-key="step">
+                            <div t-att-class="'fh-step ' + (isStepActive(step) ? 'fh-step--active' : '') + (isStepDone(step) ? ' fh-step--done' : '')"
+                                 t-on-click="() => this.goToStep(step)">
+                                <div class="fh-step__dot">
+                                    <t t-if="isStepDone(step)"><i class="fa fa-check"/></t>
+                                    <t t-else=""><t t-esc="state.steps.indexOf(step) + 1"/></t>
+                                </div>
+                                <span class="fh-step__label" t-esc="step.charAt(0).toUpperCase() + step.slice(1)"/>
+                            </div>
+                        </t>
+                    </div>
+
+                    <!-- ── Step: dataset ── -->
+                    <t t-if="state.currentStep === 'dataset'">
+                        <div class="fh-builder-step">
+                            <h3>1. Choose Base Dataset</h3>
+                            <p class="fh-step-desc">Select the primary data source for your report.</p>
+
+                            <div class="fh-model-selector">
+                                <t t-foreach="baseModels" t-as="bm" t-key="bm.id">
+                                    <label t-att-class="'fh-model-card ' + (state.baseModel === bm.id ? 'fh-model-card--selected' : '')">
+                                        <input type="radio" name="baseModel"
+                                               t-att-value="bm.id"
+                                               t-att-checked="state.baseModel === bm.id"
+                                               t-on-change="onBaseModelChange"/>
+                                        <i class="fa fa-database fa-2x"/>
+                                        <span t-esc="bm.label"/>
+                                    </label>
+                                </t>
+                            </div>
+                        </div>
+                    </t>
+
+                    <!-- ── Step: filters ── -->
+                    <t t-elif="state.currentStep === 'filters'">
+                        <div class="fh-builder-step">
+                            <h3>2. Define Filters</h3>
+                            <p class="fh-step-desc">Add conditions to restrict the data in your report.</p>
+                            <BuilderFilters
+                                baseModel="state.baseModel"
+                                filters="state.specFilters"
+                                onUpdate.bind="onFiltersUpdate"
+                            />
+                        </div>
+                    </t>
+
+                    <!-- ── Step: columns ── -->
+                    <t t-elif="state.currentStep === 'columns'">
+                        <div class="fh-builder-step">
+                            <h3>3. Choose Columns</h3>
+                            <p class="fh-step-desc">Select which fields to display and how to format them.</p>
+                            <BuilderColumns
+                                baseModel="state.baseModel"
+                                columns="state.specColumns"
+                                onUpdate.bind="onColumnsUpdate"
+                            />
+                        </div>
+                    </t>
+
+                    <!-- ── Step: grouping ── -->
+                    <t t-elif="state.currentStep === 'grouping'">
+                        <div class="fh-builder-step">
+                            <h3>4. Grouping &amp; Aggregations</h3>
+                            <p class="fh-step-desc">Define how rows are grouped and which fields are summed.</p>
+                            <BuilderGrouping
+                                baseModel="state.baseModel"
+                                groupby="state.specGroupby"
+                                computed="state.specComputed"
+                                columns="state.specColumns"
+                                onUpdate.bind="onGroupingUpdate"
+                            />
+                        </div>
+                    </t>
+
+                    <!-- ── Step: preview ── -->
+                    <t t-elif="state.currentStep === 'preview'">
+                        <div class="fh-builder-step">
+                            <h3>5. Preview</h3>
+                            <p class="fh-step-desc">
+                                Save the definition first, then click <strong>Run Preview</strong> to see live data.
+                            </p>
+                            <BuilderPreview
+                                spec="currentSpec"
+                                defId="state.defId"
+                            />
+                        </div>
+                    </t>
+
+                    <!-- ── Step: save ── -->
+                    <t t-elif="state.currentStep === 'save'">
+                        <div class="fh-builder-step">
+                            <h3>6. Save Definition</h3>
+                            <div class="fh-form-group">
+                                <label>Report Name *</label>
+                                <input type="text" class="fh-input"
+                                       placeholder="e.g. Monthly Analytic Summary"
+                                       t-att-value="state.defName"
+                                       t-on-input="(ev) => state.defName = ev.target.value"/>
+                            </div>
+                            <div class="fh-form-group">
+                                <label>Description</label>
+                                <textarea class="fh-input fh-input--textarea"
+                                          t-att-value="state.defDescription"
+                                          t-on-input="(ev) => state.defDescription = ev.target.value"/>
+                            </div>
+                            <div class="fh-form-group fh-form-group--check">
+                                <label>
+                                    <input type="checkbox"
+                                           t-att-checked="state.defIsPublic"
+                                           t-on-change="(ev) => state.defIsPublic = ev.target.checked"/>
+                                    Make available to all accountants
+                                </label>
+                            </div>
+                            <div class="fh-builder-save-actions">
+                                <button class="fh-btn fh-btn--primary" t-on-click="onSave">
+                                    <i class="fa fa-save"/> Save Definition
+                                </button>
+                                <t t-if="state.defId">
+                                    <button class="fh-btn fh-btn--ghost" t-on-click="onRunReport">
+                                        <i class="fa fa-play"/> Run Report
+                                    </button>
+                                </t>
+                            </div>
+                        </div>
+                    </t>
+
+                    <!-- Navigation buttons -->
+                    <div class="fh-builder-nav">
+                        <button class="fh-btn fh-btn--ghost" t-att-disabled="!canGoPrev"
+                                t-on-click="goPrev">
+                            <i class="fa fa-chevron-left"/> Previous
+                        </button>
+                        <button class="fh-btn fh-btn--primary" t-att-disabled="!canGoNext"
+                                t-on-click="goNext">
+                            Next <i class="fa fa-chevron-right"/>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- BuilderFilters -->
+    <t t-name="financehub.BuilderFilters">
+        <div class="fh-builder-filters">
+            <t t-if="state.conditions.length === 0">
+                <div class="fh-state-empty fh-state-empty--sm">
+                    No filters yet. All records will be included.
+                </div>
+            </t>
+            <t t-foreach="state.conditions" t-as="cond" t-key="cond_index">
+                <div class="fh-filter-row">
+                    <!-- Field -->
+                    <select class="fh-select fh-select--sm" t-on-change="(ev) => this.onFieldChange(cond_index, ev)">
+                        <t t-foreach="availableFields" t-as="f" t-key="f.name">
+                            <option t-att-value="f.name" t-att-selected="cond.field === f.name">
+                                <t t-esc="f.string"/>
+                            </option>
+                        </t>
+                    </select>
+                    <!-- Operator -->
+                    <select class="fh-select fh-select--sm" t-on-change="(ev) => this.onOperatorChange(cond_index, ev)">
+                        <t t-foreach="operatorsFor(cond.field)" t-as="op" t-key="op.id">
+                            <option t-att-value="op.id" t-att-selected="cond.operator === op.id">
+                                <t t-esc="op.l"/>
+                            </option>
+                        </t>
+                    </select>
+                    <!-- Value -->
+                    <t t-if="inputTypeFor(cond.field) === 'checkbox'">
+                        <input type="checkbox" t-att-checked="cond.value"
+                               t-on-change="(ev) => this.onBooleanChange(cond_index, ev)"/>
+                    </t>
+                    <t t-else="">
+                        <input t-att-type="inputTypeFor(cond.field)"
+                               class="fh-input fh-input--sm"
+                               t-att-value="cond.value"
+                               t-on-change="(ev) => this.onValueChange(cond_index, ev)"/>
+                    </t>
+                    <!-- Remove -->
+                    <button class="fh-btn fh-btn--ghost fh-btn--icon fh-btn--sm"
+                            t-on-click="() => this.removeCondition(cond_index)">
+                        <i class="fa fa-times"/>
+                    </button>
+                </div>
+            </t>
+            <button class="fh-btn fh-btn--ghost fh-btn--sm fh-mt-2" t-on-click="addCondition">
+                <i class="fa fa-plus"/> Add filter
+            </button>
+        </div>
+    </t>
+
+    <!-- BuilderColumns -->
+    <t t-name="financehub.BuilderColumns">
+        <div class="fh-builder-columns">
+            <!-- Available fields to add -->
+            <div class="fh-form-group">
+                <label>Add column</label>
+                <select class="fh-select" t-on-change="onAddField">
+                    <option value="">— select field —</option>
+                    <t t-foreach="availableFields" t-as="f" t-key="f.name">
+                        <option t-att-value="f.name" t-esc="f.string"/>
+                    </t>
+                </select>
+            </div>
+
+            <!-- Selected columns list -->
+            <t t-if="state.cols.length === 0">
+                <div class="fh-state-empty fh-state-empty--sm">No columns yet. Add at least one field.</div>
+            </t>
+            <table class="fh-table fh-table--sm" t-if="state.cols.length > 0">
+                <thead>
+                    <tr>
+                        <th>Field</th>
+                        <th>Label</th>
+                        <th>Format</th>
+                        <th>Aggregate?</th>
+                        <th>Order</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <t t-foreach="state.cols" t-as="col" t-key="col.field">
+                        <tr>
+                            <td><code t-esc="col.field"/></td>
+                            <td>
+                                <input type="text" class="fh-input fh-input--sm"
+                                       t-att-value="col.label"
+                                       t-on-input="(ev) => this.onLabelChange(col_index, ev)"/>
+                            </td>
+                            <td>
+                                <select class="fh-select fh-select--sm" t-att-value="col.format"
+                                        t-on-change="(ev) => this.onFormatChange(col_index, ev)">
+                                    <t t-foreach="formatOptions" t-as="fo" t-key="fo.id">
+                                        <option t-att-value="fo.id" t-att-selected="col.format === fo.id">
+                                            <t t-esc="fo.label"/>
+                                        </option>
+                                    </t>
+                                </select>
+                            </td>
+                            <td class="fh-td--center">
+                                <input type="checkbox" t-att-checked="col.aggregate"
+                                       t-on-change="(ev) => this.onAggregateChange(col_index, ev)"/>
+                            </td>
+                            <td>
+                                <button class="fh-btn fh-btn--ghost fh-btn--icon fh-btn--xs"
+                                        t-on-click="() => this.moveUp(col_index)" title="Move up">
+                                    <i class="fa fa-arrow-up"/>
+                                </button>
+                                <button class="fh-btn fh-btn--ghost fh-btn--icon fh-btn--xs"
+                                        t-on-click="() => this.moveDown(col_index)" title="Move down">
+                                    <i class="fa fa-arrow-down"/>
+                                </button>
+                            </td>
+                            <td>
+                                <button class="fh-btn fh-btn--ghost fh-btn--icon fh-btn--sm"
+                                        t-on-click="() => this.removeColumn(col_index)">
+                                    <i class="fa fa-times"/>
+                                </button>
+                            </td>
+                        </tr>
+                    </t>
+                </tbody>
+            </table>
+        </div>
+    </t>
+
+    <!-- BuilderGrouping -->
+    <t t-name="financehub.BuilderGrouping">
+        <div class="fh-builder-grouping">
+            <h4>Group by</h4>
+            <div class="fh-groupby-list">
+                <t t-foreach="groupableFields" t-as="gf" t-key="gf.name">
+                    <label class="fh-groupby-item">
+                        <input type="checkbox"
+                               t-att-checked="isGrouped(gf.name)"
+                               t-on-change="() => this.toggleGroupby(gf.name)"/>
+                        <span t-esc="gf.label"/>
+                    </label>
+                </t>
+            </div>
+
+            <t t-if="state.groupby.length > 1">
+                <h4 class="fh-mt-2">Group-by order</h4>
+                <div class="fh-groupby-order">
+                    <t t-foreach="state.groupby" t-as="g" t-key="g">
+                        <div class="fh-groupby-order-item">
+                            <span t-esc="g"/>
+                            <button class="fh-btn fh-btn--ghost fh-btn--icon fh-btn--xs"
+                                    t-on-click="() => this.moveGroupUp(g_index)"><i class="fa fa-arrow-up"/></button>
+                            <button class="fh-btn fh-btn--ghost fh-btn--icon fh-btn--xs"
+                                    t-on-click="() => this.moveGroupDown(g_index)"><i class="fa fa-arrow-down"/></button>
+                        </div>
+                    </t>
+                </div>
+            </t>
+
+            <h4 class="fh-mt-3">Computed Fields (optional)</h4>
+            <p class="fh-step-desc-sm">Define simple formula fields (e.g. <code>debit - credit</code>).</p>
+            <t t-foreach="state.computed" t-as="cf" t-key="cf.name">
+                <div class="fh-computed-row">
+                    <input type="text" class="fh-input fh-input--sm" placeholder="Name (no spaces)"
+                           t-att-value="cf.name"
+                           t-on-input="(ev) => this.onComputedNameChange(cf_index, ev)"/>
+                    <input type="text" class="fh-input fh-input--sm" placeholder="Label"
+                           t-att-value="cf.label"
+                           t-on-input="(ev) => this.onComputedLabelChange(cf_index, ev)"/>
+                    <input type="text" class="fh-input fh-input--sm" placeholder="Formula e.g. debit - credit"
+                           t-att-value="cf.formula"
+                           t-on-input="(ev) => this.onComputedFormulaChange(cf_index, ev)"/>
+                    <button class="fh-btn fh-btn--ghost fh-btn--icon fh-btn--sm"
+                            t-on-click="() => this.removeComputed(cf_index)">
+                        <i class="fa fa-times"/>
+                    </button>
+                </div>
+            </t>
+            <button class="fh-btn fh-btn--ghost fh-btn--sm fh-mt-1" t-on-click="addComputed">
+                <i class="fa fa-plus"/> Add computed field
+            </button>
+        </div>
+    </t>
+
+    <!-- BuilderPreview -->
+    <t t-name="financehub.BuilderPreview">
+        <div class="fh-builder-preview">
+            <button class="fh-btn fh-btn--primary" t-on-click="runPreview">
+                <i class="fa fa-play"/> Run Preview
+            </button>
+            <t t-if="state.loading">
+                <div class="fh-state-loading"><i class="fa fa-spinner fa-spin fa-2x"/></div>
+            </t>
+            <t t-elif="state.error">
+                <div class="fh-state-error" t-esc="state.error"/>
+            </t>
+            <t t-elif="state.data">
+                <div class="fh-preview-meta">
+                    <strong t-esc="state.data.rows.length"/> rows returned
+                    (limited to first 500)
+                </div>
+                <div class="fh-preview-table-wrap">
+                    <table class="fh-table fh-table--sm">
+                        <thead>
+                            <tr>
+                                <t t-foreach="columns" t-as="col" t-key="col.field">
+                                    <th t-esc="col.label"/>
+                                </t>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="rows" t-as="row" t-key="row.row_key">
+                                <tr>
+                                    <t t-foreach="columns" t-as="col" t-key="col.field">
+                                        <td t-esc="formatCell(row.values[col.field], col.type)"/>
+                                    </t>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+            <t t-else="">
+                <div class="fh-state-empty fh-state-empty--sm">
+                    Click <strong>Run Preview</strong> to see your report data.
+                </div>
+            </t>
+        </div>
+    </t>
+
+</templates>

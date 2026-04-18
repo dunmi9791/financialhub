@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="financehub.SavedReports">
+        <div class="fh-page fh-page--saved-reports">
+
+            <div class="fh-page-header">
+                <h1 class="fh-page-title">
+                    <i class="fa fa-bookmark"/> Saved Reports
+                </h1>
+            </div>
+
+            <!-- Toolbar -->
+            <div class="fh-toolbar">
+                <!-- Search -->
+                <div class="fh-search-box">
+                    <i class="fa fa-search fh-search-box__icon"/>
+                    <input type="text" class="fh-input fh-search-box__input"
+                           placeholder="Search by name, tag, description…"
+                           t-att-value="state.searchQuery"
+                           t-on-input="onSearchInput"/>
+                </div>
+
+                <!-- View mode tabs -->
+                <div class="fh-tab-bar">
+                    <button t-att-class="'fh-tab ' + (state.viewMode === 'all' ? 'fh-tab--active' : '')"
+                            t-on-click="() => this.setViewMode('all')">All</button>
+                    <button t-att-class="'fh-tab ' + (state.viewMode === 'mine' ? 'fh-tab--active' : '')"
+                            t-on-click="() => this.setViewMode('mine')">My Reports</button>
+                    <button t-att-class="'fh-tab ' + (state.viewMode === 'shared' ? 'fh-tab--active' : '')"
+                            t-on-click="() => this.setViewMode('shared')">Shared</button>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <t t-if="state.loading">
+                <div class="fh-state-loading">
+                    <i class="fa fa-spinner fa-spin fa-2x"/>
+                </div>
+            </t>
+
+            <!-- Empty -->
+            <t t-elif="filteredConfigs.length === 0">
+                <div class="fh-state-empty">
+                    <i class="fa fa-bookmark-o fa-3x"/>
+                    <p>No saved configurations found.</p>
+                    <p>Save a report configuration from the Reports viewer.</p>
+                </div>
+            </t>
+
+            <!-- Config cards -->
+            <t t-else="">
+                <div class="fh-config-grid">
+                    <t t-foreach="filteredConfigs" t-as="cfg" t-key="cfg.id">
+                        <div class="fh-config-card">
+                            <div class="fh-config-card__header">
+                                <div class="fh-config-card__type-badge" t-esc="reportTypeLabel(cfg.report_type)"/>
+                                <t t-if="cfg.is_default">
+                                    <span class="fh-badge fh-badge--star" title="Default">
+                                        <i class="fa fa-star"/>
+                                    </span>
+                                </t>
+                                <t t-if="cfg.sharing === 'shared'">
+                                    <span class="fh-badge fh-badge--shared" title="Shared">
+                                        <i class="fa fa-users"/>
+                                    </span>
+                                </t>
+                            </div>
+
+                            <div class="fh-config-card__body">
+                                <h3 class="fh-config-card__name" t-esc="cfg.name"/>
+                                <p class="fh-config-card__desc" t-esc="cfg.description || 'No description'"/>
+                                <t t-if="cfg.tags">
+                                    <div class="fh-config-card__tags">
+                                        <t t-foreach="(cfg.tags || '').split(',')" t-as="tag" t-key="tag">
+                                            <span class="fh-tag" t-esc="tag.trim()"/>
+                                        </t>
+                                    </div>
+                                </t>
+                                <t t-if="cfg.last_used">
+                                    <div class="fh-config-card__meta">
+                                        Last used: <t t-esc="String(cfg.last_used).slice(0,10)"/>
+                                    </div>
+                                </t>
+                            </div>
+
+                            <div class="fh-config-card__actions">
+                                <button class="fh-btn fh-btn--primary fh-btn--sm"
+                                        t-on-click="() => this.onOpen(cfg)">
+                                    <i class="fa fa-play"/> Open
+                                </button>
+                                <button class="fh-btn fh-btn--ghost fh-btn--sm"
+                                        t-on-click="() => this.onDuplicate(cfg)">
+                                    <i class="fa fa-copy"/> Duplicate
+                                </button>
+                                <button class="fh-btn fh-btn--ghost fh-btn--sm"
+                                        t-on-click="() => this.onEdit(cfg)">
+                                    <i class="fa fa-pencil"/> Edit
+                                </button>
+                                <button class="fh-btn fh-btn--danger fh-btn--sm"
+                                        t-on-click="() => this.onDelete(cfg)">
+                                    <i class="fa fa-trash"/>
+                                </button>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+            </t>
+
+            <!-- Delete confirmation dialog -->
+            <t t-if="state.confirmDeleteId">
+                <div class="fh-modal-overlay" t-on-click="onCancelDelete"/>
+                <div class="fh-modal fh-modal--sm">
+                    <div class="fh-modal-header">
+                        <h3>Confirm Delete</h3>
+                    </div>
+                    <div class="fh-modal-body">
+                        Are you sure you want to delete this saved configuration? This cannot be undone.
+                    </div>
+                    <div class="fh-modal-footer">
+                        <button class="fh-btn fh-btn--ghost" t-on-click="onCancelDelete">Cancel</button>
+                        <button class="fh-btn fh-btn--danger" t-on-click="onConfirmDelete">Delete</button>
+                    </div>
+                </div>
+            </t>
+
+            <!-- Edit modal -->
+            <t t-if="state.editingConfig">
+                <div class="fh-modal-overlay" t-on-click="onCancelEdit"/>
+                <div class="fh-modal">
+                    <div class="fh-modal-header">
+                        <h3>Edit Configuration</h3>
+                        <button class="fh-btn fh-btn--ghost fh-btn--icon" t-on-click="onCancelEdit">
+                            <i class="fa fa-times"/>
+                        </button>
+                    </div>
+                    <div class="fh-modal-body">
+                        <div class="fh-form-group">
+                            <label>Name</label>
+                            <input type="text" class="fh-input"
+                                   t-att-value="state.editingConfig.name"
+                                   t-on-input="(ev) => state.editingConfig.name = ev.target.value"/>
+                        </div>
+                        <div class="fh-form-group">
+                            <label>Description</label>
+                            <textarea class="fh-input fh-input--textarea"
+                                      t-att-value="state.editingConfig.description"
+                                      t-on-input="(ev) => state.editingConfig.description = ev.target.value"/>
+                        </div>
+                        <div class="fh-form-group">
+                            <label>Tags (comma-separated)</label>
+                            <input type="text" class="fh-input"
+                                   t-att-value="state.editingConfig.tags || ''"
+                                   t-on-input="(ev) => state.editingConfig.tags = ev.target.value"/>
+                        </div>
+                        <div class="fh-form-group">
+                            <label>Sharing</label>
+                            <select class="fh-select"
+                                    t-att-value="state.editingConfig.sharing"
+                                    t-on-change="(ev) => state.editingConfig.sharing = ev.target.value">
+                                <option value="private">Private</option>
+                                <option value="shared">Shared</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="fh-modal-footer">
+                        <button class="fh-btn fh-btn--ghost" t-on-click="onCancelEdit">Cancel</button>
+                        <button class="fh-btn fh-btn--primary" t-on-click="onSaveEdit">
+                            <i class="fa fa-save"/> Save
+                        </button>
+                    </div>
+                </div>
+            </t>
+
+        </div>
+    </t>
+
+</templates>

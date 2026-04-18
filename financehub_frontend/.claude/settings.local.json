@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/Users/domin/OneDrive/Documents/financialhub/financehub_frontend -type f \\\\\\( -name \"*.js\" -o -name \"*.py\" \\\\\\) -exec wc -l {} +)",
+      "Bash(xargs wc *)",
+      "Bash(git -C \"/c/Users/domin/OneDrive/Documents/financialhub/financehub_frontend\" status)",
+      "Bash(git -C \"C:/Users/domin/OneDrive/Documents/financialhub/financehub_frontend\" status)",
+      "Bash(tee /tmp/out.txt)",
+      "Read(//tmp/**)",
+      "Bash(Write-Output \"hello\")",
+      "Bash(echo \"EXIT: $?\")"
+    ]
+  }
+}

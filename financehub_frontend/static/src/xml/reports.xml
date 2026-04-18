@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="financehub.Reports">
+        <div class="fh-page fh-page--reports">
+
+            <!-- ── Left sidebar: report selector ── -->
+            <div class="fh-reports-sidebar">
+                <div class="fh-sidebar-section">
+                    <div class="fh-sidebar-title">Standard Reports</div>
+                    <t t-foreach="state.reportTypes.filter(r => !r.is_custom)" t-as="rtype" t-key="rtype.id">
+                        <button t-att-class="'fh-sidebar-item ' + (state.selectedReportType === rtype.id ? 'fh-sidebar-item--active' : '')"
+                                t-on-click="() => this.onReportSelect(rtype.id)">
+                            <i t-att-class="'fa ' + (rtype.icon || 'fa-file-text-o')"/>
+                            <span t-esc="rtype.label"/>
+                        </button>
+                    </t>
+                </div>
+
+                <t t-if="state.reportTypes.some(r => r.is_custom)">
+                    <div class="fh-sidebar-section">
+                        <div class="fh-sidebar-title">Custom Reports</div>
+                        <t t-foreach="state.reportTypes.filter(r => r.is_custom)" t-as="rtype" t-key="rtype.id">
+                            <button t-att-class="'fh-sidebar-item ' + (state.selectedReportType === rtype.id ? 'fh-sidebar-item--active' : '')"
+                                    t-on-click="() => this.onReportSelect(rtype.id)">
+                                <i class="fa fa-cog"/>
+                                <span t-esc="rtype.label"/>
+                            </button>
+                        </t>
+                    </div>
+                </t>
+
+                <!-- Saved report presets -->
+                <t t-if="state.savedConfigs.length">
+                    <div class="fh-sidebar-section">
+                        <div class="fh-sidebar-title">Saved Presets</div>
+                        <t t-foreach="state.savedConfigs" t-as="cfg" t-key="cfg.id">
+                            <button class="fh-sidebar-item fh-sidebar-item--preset"
+                                    t-on-click="() => this.onLoadSavedConfig(cfg)">
+                                <i t-att-class="'fa ' + (cfg.is_default ? 'fa-star' : 'fa-bookmark')"/>
+                                <span t-esc="cfg.name"/>
+                            </button>
+                        </t>
+                    </div>
+                </t>
+            </div>
+
+            <!-- ── Main content area ── -->
+            <div class="fh-reports-main">
+
+                <!-- Top bar -->
+                <div class="fh-reports-topbar">
+                    <h2 class="fh-report-heading" t-esc="reportTitle"/>
+
+                    <!-- Filter bar -->
+                    <FilterBar
+                        filters="state.filters"
+                        reportDef="selectedReportDef"
+                        onFiltersChange.bind="onFiltersChange"
+                    />
+
+                    <!-- Actions -->
+                    <div class="fh-reports-actions">
+                        <button class="fh-btn fh-btn--ghost fh-btn--sm"
+                                t-on-click="onSaveConfig"
+                                t-att-disabled="!state.reportData">
+                            <i class="fa fa-bookmark"/> Save config
+                        </button>
+                        <ExportButtons
+                            onExportPdf.bind="onExportPdf"
+                            onExportXlsx.bind="onExportXlsx"
+                            disabled="!state.reportData or state.loading"
+                        />
+                    </div>
+                </div>
+
+                <!-- Report table -->
+                <ReportTable
+                    reportData="state.reportData"
+                    loading="state.loading"
+                    error="state.error"
+                    onRowDrilldown.bind="onRowDrilldown"
+                />
+
+            </div>
+
+            <!-- Drilldown drawer -->
+            <DrilldownDrawer
+                open="state.drilldownOpen"
+                rowKey="state.drilldownRowKey"
+                title="state.drilldownTitle"
+                filters="state.filters"
+                onClose.bind="onDrilldownClose"
+            />
+
+            <!-- Save config modal -->
+            <SavedConfigModal
+                open="state.saveModalOpen"
+                onSave.bind="onSaveConfigConfirm"
+                onCancel.bind="onSaveConfigCancel"
+            />
+
+        </div>
+    </t>
+
+</templates>

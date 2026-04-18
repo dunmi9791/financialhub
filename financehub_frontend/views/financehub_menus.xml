@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             FinanceHub top-level menu item (child of Accounting)
+             ═══════════════════════════════════════════════════════════════ -->
+
+        <menuitem
+            id="menu_financehub_root"
+            name="FinanceHub"
+            parent="account.menu_finance"
+            sequence="5"
+            groups="account.group_account_user"
+        />
+
+        <!-- Dashboard -->
+        <menuitem
+            id="menu_financehub_dashboard"
+            name="Dashboard"
+            parent="menu_financehub_root"
+            action="action_financehub_dashboard"
+            sequence="10"
+            groups="account.group_account_user"
+        />
+
+        <!-- Reports -->
+        <menuitem
+            id="menu_financehub_reports"
+            name="Reports"
+            parent="menu_financehub_root"
+            action="action_financehub_reports"
+            sequence="20"
+            groups="account.group_account_user"
+        />
+
+        <!-- Saved Reports -->
+        <menuitem
+            id="menu_financehub_saved_reports"
+            name="Saved Reports"
+            parent="menu_financehub_root"
+            action="action_financehub_saved_reports"
+            sequence="30"
+            groups="account.group_account_user"
+        />
+
+        <!-- Custom Report Builder -->
+        <menuitem
+            id="menu_financehub_report_builder"
+            name="Custom Report Builder"
+            parent="menu_financehub_root"
+            action="action_financehub_report_builder"
+            sequence="40"
+            groups="account.group_account_user"
+        />
+
+        <!-- Bank Reconciliation -->
+        <menuitem
+            id="menu_financehub_reconciliation"
+            name="Bank Reconciliation"
+            parent="menu_financehub_root"
+            action="action_financehub_reconciliation"
+            sequence="50"
+            groups="account.group_account_user"
+        />
+
+        <!-- ── Standard Financial Reports sub-menu ── -->
+        <menuitem
+            id="menu_financehub_std_reports"
+            name="Standard Reports"
+            parent="menu_financehub_root"
+            sequence="60"
+            groups="account.group_account_user"
+        />
+
+        <menuitem
+            id="menu_financehub_trial_balance"
+            name="Trial Balance"
+            parent="menu_financehub_std_reports"
+            action="action_financehub_trial_balance"
+            sequence="10"
+            groups="account.group_account_user"
+        />
+
+
+</odoo>

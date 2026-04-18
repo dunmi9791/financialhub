@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_financehub_saved_config_user,financehub.saved.config user,model_financehub_saved_config,account.group_account_user,1,1,1,1
+access_financehub_saved_config_manager,financehub.saved.config manager,model_financehub_saved_config,account.group_account_manager,1,1,1,1
+access_financehub_report_definition_user,financehub.report.definition user,model_financehub_report_definition,account.group_account_user,1,1,1,1
+access_financehub_report_definition_manager,financehub.report.definition manager,model_financehub_report_definition,account.group_account_manager,1,1,1,1
+access_financehub_reconciliation_note_user,financehub.reconciliation.note user,model_financehub_reconciliation_note,account.group_account_user,1,1,1,0
+access_financehub_reconciliation_note_manager,financehub.reconciliation.note manager,model_financehub_reconciliation_note,account.group_account_manager,1,1,1,1

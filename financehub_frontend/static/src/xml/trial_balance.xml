@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="financehub.TrialBalance">
+        <div class="fh-page fh-page--trial-balance">
+
+            <!-- ── Page header ── -->
+            <div class="fh-page-header">
+                <div class="fh-page-header__left">
+                    <h1 class="fh-page-title">
+                        <i class="fa fa-table"/> Trial Balance
+                    </h1>
+                    <span class="fh-page-subtitle" t-esc="subtitle"/>
+                </div>
+
+                <!-- Balance indicator -->
+                <t t-if="isBalanced !== null">
+                    <div t-att-class="'fh-tb-balance-badge ' + (isBalanced ? 'fh-tb-balance-badge--ok' : 'fh-tb-balance-badge--warn')">
+                        <i t-att-class="'fa ' + (isBalanced ? 'fa-check-circle' : 'fa-exclamation-triangle')"/>
+                        <span t-esc="isBalanced ? 'Balanced' : 'Out of balance'"/>
+                    </div>
+                </t>
+
+                <!-- Export -->
+                <ExportButtons
+                    onExportPdf.bind="onExportPdf"
+                    onExportXlsx.bind="onExportXlsx"
+                    disabled="!state.reportData or state.loading"
+                />
+            </div>
+
+            <!-- ── Filter bar ── -->
+            <div class="fh-tb-filter-row">
+                <FilterBar
+                    filters="state.filters"
+                    reportDef="tbReportDef"
+                    onFiltersChange.bind="onFiltersChange"
+                />
+
+                <!-- Hide zero-balance toggle -->
+                <label class="fh-tb-hide-zero">
+                    <input type="checkbox"
+                           t-att-checked="state.filters.hide_zero"
+                           t-on-change="onHideZeroToggle"/>
+                    <span>Hide zero-balance accounts</span>
+                </label>
+            </div>
+
+            <!-- ── Column header strip (explains the 6 monetary columns) ── -->
+            <t t-if="state.reportData and !state.loading">
+                <div class="fh-tb-col-headers">
+                    <span class="fh-tb-col-group">
+                        <span class="fh-tb-col-group__label">Opening Balance</span>
+                        <span class="fh-tb-col-group__sub">before period</span>
+                    </span>
+                    <span class="fh-tb-col-group">
+                        <span class="fh-tb-col-group__label">Period Movements</span>
+                        <span class="fh-tb-col-group__sub" t-esc="state.filters.date_from + ' – ' + state.filters.date_to"/>
+                    </span>
+                    <span class="fh-tb-col-group">
+                        <span class="fh-tb-col-group__label">Closing Balance</span>
+                        <span class="fh-tb-col-group__sub">as of period end</span>
+                    </span>
+                </div>
+            </t>
+
+            <!-- ── Report table ── -->
+            <div class="fh-tb-body">
+                <ReportTable
+                    reportData="state.reportData"
+                    loading="state.loading"
+                    error="state.error"
+                    onRowDrilldown.bind="onRowDrilldown"
+                />
+            </div>
+
+            <!-- ── Drilldown drawer ── -->
+            <DrilldownDrawer
+                open="state.drilldownOpen"
+                rowKey="state.drilldownRowKey"
+                title="state.drilldownTitle"
+                filters="state.filters"
+                onClose.bind="onDrilldownClose"
+            />
+
+        </div>
+    </t>
+
+</templates>
