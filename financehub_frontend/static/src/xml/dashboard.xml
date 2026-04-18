@@ -105,7 +105,7 @@
                     </div>
 
                     <!-- Unreconciled Lines -->
-                    <div t-att-class="'fh-kpi-card ' + (state.kpis.unrecon_count > 0 ? 'fh-kpi--warning' : '')">
+                    <div t-att-class="'fh-kpi-card ' + (state.kpis.unrecon_count &gt; 0 ? 'fh-kpi--warning' : '')">
                         <div class="fh-kpi-card__icon">
                             <i class="fa fa-exclamation-circle fa-2x"/>
                         </div>

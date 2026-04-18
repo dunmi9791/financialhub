@@ -193,7 +193,7 @@
                         <t t-esc="total"/>
                     </span>
                     <div class="fh-pagination">
-                        <button class="fh-btn fh-btn--sm" t-att-disabled="page <= 1"
+                        <button class="fh-btn fh-btn--sm" t-att-disabled="page &lt;= 1"
                                 t-on-click="() => this.props.onPageChange(page - 1)">
                             <i class="fa fa-chevron-left"/>
                         </button>
@@ -201,7 +201,7 @@
                             <button t-att-class="'fh-btn fh-btn--sm ' + (p === page ? 'fh-btn--primary' : '')"
                                     t-on-click="() => this.props.onPageChange(p)" t-esc="p"/>
                         </t>
-                        <button class="fh-btn fh-btn--sm" t-att-disabled="page >= pages"
+                        <button class="fh-btn fh-btn--sm" t-att-disabled="page &gt;= pages"
                                 t-on-click="() => this.props.onPageChange(page + 1)">
                             <i class="fa fa-chevron-right"/>
                         </button>
@@ -221,7 +221,7 @@
             <div class="fh-match-panel__header">
                 <div class="fh-match-panel__line-info">
                     <div class="fh-match-panel__ref" t-esc="props.line.payment_ref || '—'"/>
-                    <div t-att-class="'fh-match-panel__amount ' + (props.line.amount >= 0 ? 'fh-amount--positive' : 'fh-amount--negative')">
+                    <div t-att-class="'fh-match-panel__amount ' + (props.line.amount &gt;= 0 ? 'fh-amount--positive' : 'fh-amount--negative')">
                         <t t-esc="formatAmount(props.line.amount)"/>
                         <span t-esc="' ' + props.line.currency"/>
                     </div>
