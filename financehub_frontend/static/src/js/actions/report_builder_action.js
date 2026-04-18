@@ -69,11 +69,11 @@ export class FinancehubReportBuilder extends Component {
             definitions: [],
             loadingDefs: false,
         });
-    }
 
-    async willStart() {
-        await this._loadDefinitions();
-        await this._loadAvailableFields();
+        onWillStart(async () => {
+            await this._loadDefinitions();
+            await this._loadAvailableFields();
+        });
     }
 
     async _loadDefinitions() {

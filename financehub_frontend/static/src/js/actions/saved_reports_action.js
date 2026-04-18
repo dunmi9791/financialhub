@@ -41,10 +41,8 @@ export class FinancehubSavedReports extends Component {
             editingConfig: null,  // config being edited
             confirmDeleteId: null,
         });
-    }
 
-    async willStart() {
-        await this._loadAll();
+        onWillStart(() => this._loadAll());
     }
 
     async _loadAll() {

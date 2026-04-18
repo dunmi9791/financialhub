@@ -81,14 +81,14 @@ export class FinancehubReports extends Component {
             // Saved configs for current report
             savedConfigs: [],
         });
-    }
 
-    async willStart() {
-        this.state.reportTypes = await this.fh.getReportTypes();
-        if (this.state.reportTypes.length > 0) {
-            this.state.selectedReportType = this.state.reportTypes[0].id;
-            await this._runReport();
-        }
+        onWillStart(async () => {
+            this.state.reportTypes = await this.fh.getReportTypes();
+            if (this.state.reportTypes.length > 0) {
+                this.state.selectedReportType = this.state.reportTypes[0].id;
+                await this._runReport();
+            }
+        });
     }
 
     // ── Report loading ────────────────────────────────────────────────────

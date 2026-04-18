@@ -25,10 +25,8 @@ export class FinancehubDashboard extends Component {
             error: null,
             kpis: null,
         });
-    }
 
-    async willStart() {
-        await this._loadKpis();
+        onWillStart(() => this._loadKpis());
     }
 
     async _loadKpis() {
