@@ -189,7 +189,7 @@
                 <div class="fh-st-pagination">
                     <span class="fh-pagination-info">
                         <t t-esc="(page - 1) * props.linesData.page_size + 1"/> –
-                        <t t-esc="Math.min(page * props.linesData.page_size, total)"/> of
+                        <t t-esc="page * props.linesData.page_size &lt; total ? page * props.linesData.page_size : total"/> of
                         <t t-esc="total"/>
                     </span>
                     <div class="fh-pagination">
@@ -260,7 +260,7 @@
                             <div class="fh-audit-entry__who">
                                 <t t-esc="note.performed_by ? note.performed_by[1] : ''"/>
                             </div>
-                            <div class="fh-audit-entry__when" t-esc="String(note.action_date).slice(0,16)"/>
+                            <div class="fh-audit-entry__when" t-esc="(note.action_date || '').slice(0,16)"/>
                             <div class="fh-audit-entry__note" t-esc="note.note || ''"/>
                         </div>
                     </t>
@@ -466,7 +466,7 @@
                     </div>
                     <div class="fh-form-group">
                         <label>Amount</label>
-                        <strong t-esc="formatAmount(Math.abs(props.line.amount))"/>
+                        <strong t-esc="formatAmount(props.line.amount &lt; 0 ? -props.line.amount : props.line.amount)"/>
                         <span t-esc="' ' + props.line.currency"/>
                         <span class="fh-ml-2 fh-text--muted">
                             (<t t-esc="props.line.amount >= 0 ? 'Inbound' : 'Outbound'"/>)

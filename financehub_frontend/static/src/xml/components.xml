@@ -82,7 +82,7 @@
                     <label class="fh-filter-label">Compare</label>
                     <select class="fh-select" t-att-value="props.filters.compare_mode || ''"
                             t-on-change="onCompareModeChange">
-                        <t t-foreach="compareModes" t-as="cm" t-key="String(cm.id)">
+                        <t t-foreach="compareModes" t-as="cm" t-key="'' + cm.id">
                             <option t-att-value="cm.id || ''" t-att-selected="props.filters.compare_mode === cm.id">
                                 <t t-esc="cm.label"/>
                             </option>

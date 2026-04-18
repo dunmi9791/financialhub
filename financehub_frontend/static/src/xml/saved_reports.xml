@@ -79,7 +79,7 @@
                                 </t>
                                 <t t-if="cfg.last_used">
                                     <div class="fh-config-card__meta">
-                                        Last used: <t t-esc="String(cfg.last_used).slice(0,10)"/>
+                                        Last used: <t t-esc="(cfg.last_used || '').slice(0,10)"/>
                                     </div>
                                 </t>
                             </div>
