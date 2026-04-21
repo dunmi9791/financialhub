@@ -703,7 +703,7 @@ class FinancehubReportsController(http.Controller):
             }
 
         accounts = env['account.account'].search(
-            [('id', 'in', list(all_acc_ids)), ('company_ids', 'in', [company.id])],
+            [('id', 'in', list(all_acc_ids)), ('company_id', '=', company.id)],
             order='code asc',
         )
         # Map account_type → section key for quick lookup
@@ -1030,7 +1030,7 @@ class FinancehubReportsController(http.Controller):
         spec_filters = spec.get('filters', [])
 
         if base_model == 'account.account':
-            domain = [('company_ids', 'in', [env.company.id])]
+            domain = [('company_id', '=', env.company.id)]
         else:
             domain = [('company_id', '=', env.company.id)]
         # Apply spec filters
