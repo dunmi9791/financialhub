@@ -16,7 +16,6 @@
 
 import { Component, useState, onWillStart } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
-import { session } from "@web/session";
 
 const DATE_PRESETS = [
     { id: "this_month",  label: "This Month" },
@@ -93,11 +92,10 @@ export class FilterBar extends Component {
 
     async _loadData() {
         try {
-            const allowedIds = session.user_context?.allowed_company_ids || [];
             const [journals, analytics, companies] = await Promise.all([
                 this.fh.getJournals(),
                 this.fh.getAnalyticAccounts(),
-                allowedIds.length > 1 ? this.fh.getCompanies() : Promise.resolve([]),
+                this.fh.getCompanies(),
             ]);
             this.state.journals = journals;
             this.state.analytics = analytics;
@@ -174,6 +172,7 @@ export class FilterBar extends Component {
             date_preset: "ytd",
             date_from: `${new Date().getFullYear()}-01-01`,
             date_to: today,
+            company_ids: [],
             journal_ids: [],
             analytic_ids: [],
             partner_ids: [],
