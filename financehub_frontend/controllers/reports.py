@@ -381,6 +381,13 @@ class FinancehubReportsController(http.Controller):
 
         return domain
 
+    def _company_domain(self, filters):
+        """Return company filter clause, honouring company_ids from the filter payload."""
+        company_ids = [int(c) for c in filters.get('company_ids', [])]
+        if company_ids:
+            return [('company_id', 'in', company_ids)]
+        return [('company_id', '=', request.env.company.id)]
+
     def _build_drilldown_domain(self, row_key, filters):
         """Parse a row_key and merge with filters to produce a drilldown domain."""
         base_domain = self._build_filter_domain(filters)
@@ -428,8 +435,7 @@ class FinancehubReportsController(http.Controller):
         domain_base = [
             ('move_id.state', '=', 'posted'),
             ('date', '<=', date_to),
-            ('company_id', '=', company.id),
-        ]
+        ] + self._company_domain(filters)
         journal_ids = filters.get('journal_ids', [])
         if journal_ids:
             domain_base += [('journal_id', 'in', journal_ids)]
@@ -524,8 +530,7 @@ class FinancehubReportsController(http.Controller):
             ('move_id.state', '=', 'posted'),
             ('date', '>=', date_from),
             ('date', '<=', date_to),
-            ('company_id', '=', company.id),
-        ]
+        ] + self._company_domain(filters)
         journal_ids = filters.get('journal_ids', [])
         if journal_ids:
             domain_base += [('journal_id', 'in', journal_ids)]
@@ -602,9 +607,8 @@ class FinancehubReportsController(http.Controller):
             ('move_id.state', '=', 'posted'),
             ('date', '>=', date_from),
             ('date', '<=', date_to),
-            ('company_id', '=', company.id),
             ('account_id.account_type', 'in', ['asset_cash']),
-        ]
+        ] + self._company_domain(filters)
         cash_lines = env['account.move.line'].search(domain_base)
         inflows = sum(l.debit for l in cash_lines)
         outflows = sum(l.credit for l in cash_lines)
@@ -660,8 +664,7 @@ class FinancehubReportsController(http.Controller):
         # Common domain fragments (no date filter yet)
         domain_common = [
             ('move_id.state', '=', 'posted'),
-            ('company_id', '=', company.id),
-        ]
+        ] + self._company_domain(filters)
         journal_ids = filters.get('journal_ids', [])
         if journal_ids:
             domain_common += [('journal_id', 'in', journal_ids)]
@@ -703,7 +706,7 @@ class FinancehubReportsController(http.Controller):
             }
 
         accounts = env['account.account'].search(
-            [('id', 'in', list(all_acc_ids)), ('company_id', '=', company.id)],
+            [('id', 'in', list(all_acc_ids))] + self._company_domain(filters),
             order='code asc',
         )
         # Map account_type → section key for quick lookup
@@ -824,8 +827,7 @@ class FinancehubReportsController(http.Controller):
             ('move_id.state', '=', 'posted'),
             ('date', '>=', date_from),
             ('date', '<=', date_to),
-            ('company_id', '=', company.id),
-        ]
+        ] + self._company_domain(filters)
         if account_ids:
             domain_base += [('account_id', 'in', account_ids)]
         journal_ids = filters.get('journal_ids', [])
@@ -902,9 +904,8 @@ class FinancehubReportsController(http.Controller):
         domain = [
             ('move_id.state', '=', 'posted'),
             ('account_id.account_type', '=', atype),
-            ('company_id', '=', company.id),
             ('reconciled', '=', False),
-        ]
+        ] + self._company_domain(filters)
         partner_ids = filters.get('partner_ids', [])
         if partner_ids:
             domain += [('partner_id', 'in', partner_ids)]
@@ -971,8 +972,7 @@ class FinancehubReportsController(http.Controller):
             ('move_id.state', '=', 'posted'),
             ('date', '>=', date_from),
             ('date', '<=', date_to),
-            ('company_id', '=', company.id),
-        ]
+        ] + self._company_domain(filters)
         if journal_ids:
             domain_base += [('journal_id', 'in', journal_ids)]
 
@@ -1029,10 +1029,7 @@ class FinancehubReportsController(http.Controller):
         groupby_fields = spec.get('groupby', [])
         spec_filters = spec.get('filters', [])
 
-        if base_model == 'account.account':
-            domain = [('company_id', '=', env.company.id)]
-        else:
-            domain = [('company_id', '=', env.company.id)]
+        domain = self._company_domain(filters)
         # Apply spec filters
         for f in spec_filters:
             field = f.get('field')
