@@ -381,6 +381,14 @@ class FinancehubReportsController(http.Controller):
 
         return domain
 
+    def _get_report_env(self, filters):
+        """Return an env scoped to the selected company so related fields resolve correctly."""
+        env = request.env
+        company_ids = [int(c) for c in filters.get('company_ids', [])]
+        if company_ids:
+            return env.with_context(allowed_company_ids=company_ids)
+        return env
+
     def _company_domain(self, filters):
         """Return company filter clause, honouring company_ids from the filter payload."""
         company_ids = [int(c) for c in filters.get('company_ids', [])]
@@ -429,7 +437,7 @@ class FinancehubReportsController(http.Controller):
     # ── Balance Sheet ─────────────────────────────────────────────────────────
 
     def _build_balance_sheet(self, filters):
-        env = request.env
+        env = self._get_report_env(filters)
         company = env.company
         date_to = filters.get('date_to') or fields.Date.today().isoformat()
         domain_base = [
@@ -459,6 +467,8 @@ class FinancehubReportsController(http.Controller):
                     orderby='account_id asc',
                 )
                 for ln in lines:
+                    if not ln.get('account_id'):
+                        continue
                     acc = env['account.account'].browse(ln['account_id'][0])
                     balance = ln.get('balance', 0.0) or 0.0
                     rows.append({
@@ -522,7 +532,7 @@ class FinancehubReportsController(http.Controller):
     # ── Profit & Loss ─────────────────────────────────────────────────────────
 
     def _build_profit_loss(self, filters):
-        env = request.env
+        env = self._get_report_env(filters)
         company = env.company
         date_from = filters.get('date_from') or date(date.today().year, 1, 1).isoformat()
         date_to = filters.get('date_to') or fields.Date.today().isoformat()
@@ -546,6 +556,8 @@ class FinancehubReportsController(http.Controller):
                     orderby='account_id asc',
                 )
                 for ln in lines:
+                    if not ln.get('account_id'):
+                        continue
                     acc = env['account.account'].browse(ln['account_id'][0])
                     balance = -(ln.get('balance', 0.0) or 0.0)  # income is negative balance
                     rows.append({
@@ -599,7 +611,7 @@ class FinancehubReportsController(http.Controller):
     # ── Cash Flow (simplified indirect method) ───────────────────────────────
 
     def _build_cash_flow(self, filters):
-        env = request.env
+        env = self._get_report_env(filters)
         company = env.company
         date_from = filters.get('date_from') or date(date.today().year, 1, 1).isoformat()
         date_to = filters.get('date_to') or fields.Date.today().isoformat()
@@ -655,7 +667,7 @@ class FinancehubReportsController(http.Controller):
     ]
 
     def _build_trial_balance(self, filters):
-        env = request.env
+        env = self._get_report_env(filters)
         company = env.company
         date_from = filters.get('date_from') or date(date.today().year, 1, 1).isoformat()
         date_to   = filters.get('date_to')   or fields.Date.today().isoformat()
@@ -684,6 +696,7 @@ class FinancehubReportsController(http.Controller):
                     ['account_id', 'debit:sum', 'credit:sum', 'balance:sum'],
                     ['account_id'],
                 )
+                if row.get('account_id')
             }
 
         # Opening balances: all posted lines strictly before date_from
@@ -818,7 +831,7 @@ class FinancehubReportsController(http.Controller):
     # ── General Ledger ────────────────────────────────────────────────────────
 
     def _build_general_ledger(self, filters):
-        env = request.env
+        env = self._get_report_env(filters)
         company = env.company
         date_from = filters.get('date_from') or date(date.today().year, 1, 1).isoformat()
         date_to = filters.get('date_to') or fields.Date.today().isoformat()
@@ -840,6 +853,8 @@ class FinancehubReportsController(http.Controller):
         )
         rows = []
         for ag in account_groups:
+            if not ag.get('account_id'):
+                continue
             acc = env['account.account'].browse(ag['account_id'][0])
             lines = env['account.move.line'].search(
                 domain_base + [('account_id', '=', acc.id)],
@@ -891,7 +906,7 @@ class FinancehubReportsController(http.Controller):
     # ── Aged Receivable / Payable ─────────────────────────────────────────────
 
     def _build_aged(self, filters, receivable=True):
-        env = request.env
+        env = self._get_report_env(filters)
         company = env.company
         date_to_str = filters.get('date_to') or fields.Date.today().isoformat()
         date_to = date.fromisoformat(date_to_str)
@@ -963,7 +978,7 @@ class FinancehubReportsController(http.Controller):
     # ── Journal Report ────────────────────────────────────────────────────────
 
     def _build_journal_report(self, filters):
-        env = request.env
+        env = self._get_report_env(filters)
         company = env.company
         date_from = filters.get('date_from') or date(date.today().year, 1, 1).isoformat()
         date_to = filters.get('date_to') or fields.Date.today().isoformat()
@@ -985,6 +1000,8 @@ class FinancehubReportsController(http.Controller):
         rows = []
         total_d = total_c = 0.0
         for jg in journal_groups:
+            if not jg.get('journal_id'):
+                continue
             jid = jg['journal_id'][0]
             jname = jg['journal_id'][1]
             d = jg.get('debit', 0.0) or 0.0
@@ -1019,7 +1036,7 @@ class FinancehubReportsController(http.Controller):
     # ── Custom report runner ──────────────────────────────────────────────────
 
     def _run_custom_report(self, definition_id, filters):
-        env = request.env
+        env = self._get_report_env(filters)
         definition = env['financehub.report.definition'].browse(definition_id)
         if not definition.exists():
             raise UserError(f"Custom report definition {definition_id} not found.")
