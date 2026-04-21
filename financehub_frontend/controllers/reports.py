@@ -386,7 +386,7 @@ class FinancehubReportsController(http.Controller):
         env = request.env
         company_ids = [int(c) for c in filters.get('company_ids', [])]
         if company_ids:
-            return env.with_context(allowed_company_ids=company_ids)
+            return env(context=dict(env.context, allowed_company_ids=company_ids))
         return env
 
     def _company_domain(self, filters):
