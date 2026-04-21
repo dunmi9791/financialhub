@@ -76,6 +76,22 @@
                 </div>
             </t>
 
+            <!-- Company picker (only when user has access to multiple companies) -->
+            <t t-if="state.companies.length > 1">
+                <div class="fh-filter-group">
+                    <label class="fh-filter-label">Company</label>
+                    <select class="fh-select" t-on-change="onCompanyChange">
+                        <option value="">All companies</option>
+                        <t t-foreach="state.companies" t-as="c" t-key="c.id">
+                            <option t-att-value="c.id"
+                                    t-att-selected="(props.filters.company_ids || []).includes(c.id)">
+                                <t t-esc="c.name"/>
+                            </option>
+                        </t>
+                    </select>
+                </div>
+            </t>
+
             <!-- Compare mode -->
             <t t-if="supportsCompare">
                 <div class="fh-filter-group">

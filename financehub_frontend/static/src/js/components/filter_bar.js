@@ -16,6 +16,7 @@
 
 import { Component, useState, onWillStart } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
+import { session } from "@web/session";
 
 const DATE_PRESETS = [
     { id: "this_month",  label: "This Month" },
@@ -92,10 +93,15 @@ export class FilterBar extends Component {
 
     async _loadData() {
         try {
-            [this.state.journals, this.state.analytics] = await Promise.all([
-                this.fh.getJournals(null),
+            const allowedIds = session.user_context?.allowed_company_ids || [];
+            const [journals, analytics, companies] = await Promise.all([
+                this.fh.getJournals(),
                 this.fh.getAnalyticAccounts(),
+                allowedIds.length > 1 ? this.fh.getCompanies() : Promise.resolve([]),
             ]);
+            this.state.journals = journals;
+            this.state.analytics = analytics;
+            this.state.companies = companies;
         } catch (e) {
             // Non-critical; filter bar degrades gracefully
         }
@@ -151,6 +157,11 @@ export class FilterBar extends Component {
 
     onCompareModeChange(ev) {
         this._emit({ compare_mode: ev.target.value || null });
+    }
+
+    onCompanyChange(ev) {
+        const val = parseInt(ev.target.value);
+        this._emit({ company_ids: val ? [val] : [] });
     }
 
     toggleAdvanced() {

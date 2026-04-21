@@ -162,9 +162,10 @@ function makeFinancehubService({ orm, notification }) {
     // ── Odoo helper data ──────────────────────────────────────────────────
 
     async function getJournals(companyId) {
+        const domain = companyId ? [["company_id", "=", companyId]] : [];
         return orm.searchRead(
             "account.journal",
-            [["company_id", "=", companyId || false]],
+            domain,
             ["id", "name", "type", "code"],
             { order: "name asc" }
         );
@@ -173,9 +174,9 @@ function makeFinancehubService({ orm, notification }) {
     async function getCompanies() {
         return orm.searchRead(
             "res.company",
-            [["id", "in", "context.allowed_company_ids"]],
-            ["id", "name", "currency_id"],
-            {}
+            [],
+            ["id", "name"],
+            { order: "name asc" }
         );
     }
 
