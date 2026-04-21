@@ -1086,7 +1086,7 @@ class FinancehubReportsController(http.Controller):
                     field = col['field']
                     val = getattr(rec, field, None)
                     if hasattr(val, 'id'):
-                        val = val.name_get()[0][1] if val else ''
+                        val = val.display_name if val else ''
                     values[field] = val
                 rows.append({
                     'row_key': f"custom:{rec.id}",
