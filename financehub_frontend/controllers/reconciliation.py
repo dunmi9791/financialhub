@@ -39,7 +39,7 @@ def _parse_body():
     try:
         return json.loads(request.httprequest.data or b'{}')
     except (TypeError, ValueError) as exc:
-        raise UserError(_(f"Invalid JSON request body: {exc}"))
+        raise UserError(_("Invalid JSON request body: %s") % exc)
 
 
 class FinancehubReconciliationController(http.Controller):
@@ -306,14 +306,14 @@ class FinancehubReconciliationController(http.Controller):
         if not account.exists():
             raise UserError(f"Account {account_id} not found")
 
-        # Use Odoo's built-in reconciliation line creation
+        # In Odoo 17, write-off entries are passed as candidates_vals without an 'id' field
         writeoff_vals = [{
             'account_id': account.id,
-            'amount': float(amount),
+            'balance': float(amount),
             'name': label,
             'tax_ids': [(6, 0, payload.get('tax_ids', []))],
         }]
-        bank_line.reconcile([], writeoff_vals)
+        bank_line.reconcile(writeoff_vals)
         return {'reconciled': True, 'write_off': True}
 
     def _do_split(self, bank_line, payload):
