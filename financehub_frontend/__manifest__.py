@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'FinanceHub Frontend',
-    'version': '17.0.1.0.0',
+    'version': '18.0.1.0.0',
     'category': 'Accounting/Accounting',
     'summary': 'Modern OWL-based finance reporting, custom report builder and bank reconciliation UI',
     'description': """
