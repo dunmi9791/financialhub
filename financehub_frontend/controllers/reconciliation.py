@@ -299,7 +299,7 @@ class FinancehubReconciliationController(http.Controller):
             payment = env['account.payment'].browse(int(match_id))
             if not payment.exists():
                 raise UserError(f"Payment {match_id} not found")
-            line = payment.line_ids.filtered(
+            line = payment.move_id.line_ids.filtered(
                 lambda l: l.account_id.account_type in ('asset_receivable', 'liability_payable', 'asset_cash')
             )[:1]
             if line:
@@ -411,7 +411,7 @@ class FinancehubReconciliationController(http.Controller):
         payment.action_post()
         # In Odoo 17/18, reconcile via account.move.line.reconcile() on the suspense lines
         suspense_lines = self._get_suspense_lines(bank_line)
-        payment_line = payment.line_ids.filtered(
+        payment_line = payment.move_id.line_ids.filtered(
             lambda l: l.account_id.account_type in ('asset_cash',)
         )[:1]
         if suspense_lines and payment_line:
