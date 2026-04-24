@@ -263,6 +263,22 @@ class FinancehubReconciliationController(http.Controller):
 
         return _json_ok(result)
 
+    def _get_suspense_lines(self, bank_line):
+        """Return the unreconciled suspense-account lines from the bank statement entry."""
+        suspense_account = bank_line.journal_id.suspense_account_id
+        if suspense_account:
+            lines = bank_line.line_ids.filtered(
+                lambda l: l.account_id == suspense_account and not l.reconciled
+            )
+            if lines:
+                return lines
+        # Fallback: any unreconciled reconcilable line that is not the liquidity account
+        return bank_line.line_ids.filtered(
+            lambda l: not l.reconciled
+            and l.account_id.reconcile
+            and l.account_id.account_type not in ('asset_cash',)
+        )
+
     def _do_match(self, bank_line, payload):
         """Match bank line to existing payments or move lines."""
         env = request.env
@@ -271,33 +287,35 @@ class FinancehubReconciliationController(http.Controller):
         if not match_id:
             raise UserError("match_id required for match action")
 
+        suspense_lines = self._get_suspense_lines(bank_line)
+        if not suspense_lines:
+            raise UserError("No reconcilable suspense line found on bank statement entry.")
+
         if match_type == 'payment':
             payment = env['account.payment'].browse(int(match_id))
             if not payment.exists():
                 raise UserError(f"Payment {match_id} not found")
-            # Reconcile via the bank statement line's wizard
-            # In Odoo 17 the preferred approach is reconcile_move_lines
             line = payment.line_ids.filtered(
                 lambda l: l.account_id.account_type in ('asset_receivable', 'liability_payable', 'asset_cash')
             )[:1]
             if line:
-                bank_line.reconcile([{'id': line.id, 'balance': bank_line.amount}])
+                (suspense_lines | line).reconcile()
             return {'reconciled': True, 'match_type': 'payment', 'move_id': payment.move_id.id}
 
         elif match_type == 'move_line':
             move_line = env['account.move.line'].browse(int(match_id))
             if not move_line.exists():
                 raise UserError(f"Move line {match_id} not found")
-            bank_line.reconcile([{'id': move_line.id, 'balance': bank_line.amount}])
+            (suspense_lines | move_line).reconcile()
             return {'reconciled': True, 'match_type': 'move_line', 'move_id': move_line.move_id.id}
 
         raise UserError(f"Unknown match_type: {match_type}")
 
     def _do_writeoff(self, bank_line, payload):
-        """Create a write-off entry and reconcile."""
+        """Create a write-off entry and reconcile via suspense account (Odoo 17/18)."""
         env = request.env
         account_id = payload.get('account_id')
-        amount = payload.get('amount', bank_line.amount)
+        amount = float(payload.get('amount', bank_line.amount))
         label = payload.get('label', 'Write-off')
         if not account_id:
             raise UserError("account_id required for write-off")
@@ -306,15 +324,44 @@ class FinancehubReconciliationController(http.Controller):
         if not account.exists():
             raise UserError(f"Account {account_id} not found")
 
-        # Use Odoo's built-in reconciliation line creation
-        writeoff_vals = [{
-            'account_id': account.id,
-            'amount': float(amount),
-            'name': label,
-            'tax_ids': [(6, 0, payload.get('tax_ids', []))],
-        }]
-        bank_line.reconcile([], writeoff_vals)
-        return {'reconciled': True, 'write_off': True}
+        suspense_account = bank_line.journal_id.suspense_account_id
+        if not suspense_account:
+            raise UserError("Journal has no suspense account configured.")
+
+        partner_id = bank_line.partner_id.id if bank_line.partner_id else False
+        # Counterpart entry: DR suspense / CR write-off account (or reversed for negative amount)
+        writeoff_move = env['account.move'].create({
+            'journal_id': bank_line.journal_id.id,
+            'date': bank_line.date,
+            'ref': label,
+            'line_ids': [
+                (0, 0, {
+                    'account_id': suspense_account.id,
+                    'name': label,
+                    'partner_id': partner_id,
+                    'debit': max(0.0, amount),
+                    'credit': max(0.0, -amount),
+                }),
+                (0, 0, {
+                    'account_id': account.id,
+                    'name': label,
+                    'partner_id': partner_id,
+                    'debit': max(0.0, -amount),
+                    'credit': max(0.0, amount),
+                    'tax_ids': [(6, 0, payload.get('tax_ids', []))],
+                }),
+            ],
+        })
+        writeoff_move.action_post()
+
+        suspense_lines = self._get_suspense_lines(bank_line)
+        writeoff_suspense_line = writeoff_move.line_ids.filtered(
+            lambda l: l.account_id == suspense_account
+        )
+        if suspense_lines and writeoff_suspense_line:
+            (suspense_lines | writeoff_suspense_line).reconcile()
+
+        return {'reconciled': True, 'write_off': True, 'move_id': writeoff_move.id}
 
     def _do_split(self, bank_line, payload):
         """Split a statement line into multiple lines."""
@@ -359,12 +406,13 @@ class FinancehubReconciliationController(http.Controller):
         }
         payment = env['account.payment'].create(payment_vals)
         payment.action_post()
-        # Reconcile the payment with the statement line
-        line = payment.line_ids.filtered(
+        # Reconcile via the suspense line (Odoo 17/18: account.bank.statement.line has no .reconcile())
+        suspense_lines = self._get_suspense_lines(bank_line)
+        payment_line = payment.line_ids.filtered(
             lambda l: l.account_id.account_type in ('asset_cash',)
         )[:1]
-        if line:
-            bank_line.reconcile([{'id': line.id, 'balance': bank_line.amount}])
+        if suspense_lines and payment_line:
+            (suspense_lines | payment_line).reconcile()
         return {'payment_id': payment.id, 'payment_name': payment.name, 'reconciled': True}
 
     # ── Audit log ─────────────────────────────────────────────────────────────
